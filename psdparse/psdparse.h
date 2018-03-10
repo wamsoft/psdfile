@@ -215,15 +215,25 @@ namespace psd {
 		HeaderParser(Header &data) : HeaderParser::base_type(start), data(data) {
 			start =
 				(qi::lit("8BPS") >>
-				 qi::big_word [phx::bind(&Header::version, data) = qi::_1] >>
+				 qi::big_word  >>
          repos::qi::advance(6) >>
-				 qi::big_word [phx::bind(&Header::channels, data) = qi::_1] >>
-				 qi::big_dword[phx::bind(&Header::height,  data) = qi::_1] >>
-				 qi::big_dword[phx::bind(&Header::width,   data) = qi::_1] >>
-				 qi::big_word [phx::bind(&Header::depth,   data) = qi::_1] >>
-				 qi::big_word [phx::bind(&Header::mode,    data) = qi::_1]
-				 );
+				 qi::big_word  >>
+				 qi::big_dword >>
+				 qi::big_dword >>
+				 qi::big_word  >>
+				 qi::big_word 
+				 )[phx::bind(&HeaderParser::setHeader, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
 		}
+
+    void setHeader(int version, int channels, int height, int width, int depth, int mode) {
+      data.version = version;
+      data.channels = channels;
+      data.height = height;
+      data.width = width;
+      data.depth = depth;
+      data.mode = mode;
+    }
+
 		qi::rule<Iterator> start;
 		Header &data;
 	};
@@ -275,26 +285,50 @@ namespace psd {
 		
 		typedef boost::iterator_range<Iterator> irange;
 		
-		LayerMaskParser(LayerMask &data, int size) : LayerMaskParser::base_type(start), data(data) {
-			start =
-				 qi::big_dword [phx::bind(&LayerMask::top, data) = qi::_1] >>
-				 qi::big_dword [phx::bind(&LayerMask::left, data) = qi::_1] >>
-				 qi::big_dword [phx::bind(&LayerMask::bottom, data) = qi::_1] >>
-				 qi::big_dword [phx::bind(&LayerMask::right, data) = qi::_1] >>
-				 qi::byte_ [phx::bind(&LayerMask::defaultColor, data) = qi::_1] >>
-				 qi::byte_ [phx::bind(&LayerMask::flags, data) = qi::_1] >>
-				 qi::byte_;
+    LayerMaskParser(LayerMask &data, int size) : LayerMaskParser::base_type(start), data(data)
+    {
+      start =
+        (qi::big_dword >>
+        qi::big_dword >>
+        qi::big_dword >>
+        qi::big_dword >>
+        qi::byte_ >>
+        qi::byte_ >>
+        qi::byte_
+        )[phx::bind(&LayerMaskParser::setLayerMask, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
 
-			if (size > 20) {
-				start = start.copy() >>
-					qi::byte_ [phx::bind(&LayerMask::realFlags, data) = qi::_1] >>
-					qi::byte_ [phx::bind(&LayerMask::realUserMaskBackground, data) = qi::_1] >>
-					qi::big_dword [phx::bind(&LayerMask::enclosingTop, data) = qi::_1] >>
-					qi::big_dword [phx::bind(&LayerMask::enclosingLeft, data) = qi::_1] >>
-					qi::big_dword [phx::bind(&LayerMask::enclosingBottom, data) = qi::_1] >>
-					qi::big_dword [phx::bind(&LayerMask::enclosingRight, data) = qi::_1];
-			}
-		}
+      if (size > 20) {
+        start = (start.copy() >>
+          qi::byte_ >>
+          qi::byte_ >>
+          qi::big_dword >>
+          qi::big_dword >>
+          qi::big_dword >>
+          qi::big_dword
+          )[phx::bind(&LayerMaskParser::setLayerMaskExtra, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
+      }
+    }
+
+    void setLayerMask(int top, int left, int bottom, int right, int defaultColor, int flags)
+    {
+      data.top = top;
+      data.left = left;
+      data.bottom = bottom;
+      data.right = right;
+      data.defaultColor = defaultColor;
+      data.flags = flags;
+    }
+
+    void setLayerMaskExtra(int realFlags, int realUserMaskBackground, int enclosingTop, int enclosingLeft, int enclosingBottom, int enclosingRight)
+    {
+      data.realFlags = realFlags;
+      data.realUserMaskBackground = realUserMaskBackground;
+      data.enclosingTop = enclosingTop;
+      data.enclosingLeft = enclosingLeft;
+      data.enclosingBottom = enclosingBottom;
+      data.enclosingRight = enclosingRight;
+    }
+
 		qi::rule<Iterator> start;
 		LayerMask &data;
 	};
@@ -309,14 +343,19 @@ namespace psd {
 				(qi::big_dword >> qi::big_dword)
 				[phx::bind(&LayerBlendingRangeParser::addChannel, this, qi::_1, qi::_2)];
 			start =
-				 qi::big_dword [phx::bind(&LayerBlendingRange::grayBlendSource, data) = qi::_1] >>
-				 qi::big_dword [phx::bind(&LayerBlendingRange::grayBlendDest, data) = qi::_1] >>
-				 *channel;
+				 (qi::big_dword >>
+				 qi::big_dword >>
+				 *channel)[phx::bind(&LayerBlendingRangeParser::setgrayBlend, this, qi::_1, qi::_2)];
 		}
 		void addChannel(int source, int dest) {
 			LayerBlendingChannel ch = { source, dest };
 			data.channels.push_back(ch);
 		}
+    void setgrayBlend(int src, int dest)
+    {
+      data.grayBlendSource = src;
+      data.grayBlendDest = dest;
+    }
 		qi::rule<Iterator> channel;
 		qi::rule<Iterator> start;
 		LayerBlendingRange &data;
@@ -517,16 +556,28 @@ namespace psd {
 	struct GlobalLayerMaskInfoParser : qi::grammar<Iterator> {
 		GlobalLayerMaskInfoParser(GlobalLayerMaskInfo &data) : GlobalLayerMaskInfoParser::base_type(start), data(data) {
 			start =
-				(qi::big_word[phx::bind(&GlobalLayerMaskInfo::overlayColorSpace, data) = qi::_1] >>
-				 qi::big_word[phx::bind(&GlobalLayerMaskInfo::color1,  data) = qi::_1] >>
-				 qi::big_word[phx::bind(&GlobalLayerMaskInfo::color2,  data) = qi::_1] >> 
-				 qi::big_word[phx::bind(&GlobalLayerMaskInfo::color3,  data) = qi::_1] >> 
-				 qi::big_word[phx::bind(&GlobalLayerMaskInfo::color4,  data) = qi::_1] >> 
-				 qi::big_word[phx::bind(&GlobalLayerMaskInfo::opacity, data) = qi::_1] >>
-				 qi::byte_   [phx::bind(&GlobalLayerMaskInfo::kind,    data) = qi::_1] >>
+				(qi::big_word >>
+				 qi::big_word >>
+				 qi::big_word >> 
+				 qi::big_word >> 
+				 qi::big_word >> 
+				 qi::big_word >>
+				 qi::byte_    >>
 				 *qi::byte_
-				 );
+				 )[phx::bind(&GlobalLayerMaskInfoParser::setLayerMaskInfo, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6, qi::_7)];
 		}
+
+    void setLayerMaskInfo(int overlayColorSpace, int color1, int color2, int color3, int color4, int opacity, int kind)
+    {
+      data.overlayColorSpace = overlayColorSpace;
+      data.color1 = color1;
+      data.color2 = color2;
+      data.color3 = color3;
+      data.color4 = color4;
+      data.opacity = opacity;
+      data.kind = kind;
+    }
+
 		qi::rule<Iterator> start;
 		GlobalLayerMaskInfo &data;
 	};

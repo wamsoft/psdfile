@@ -4,6 +4,8 @@
 
 #define USE_ZLIB
 #ifdef USE_ZLIB
+#define ZLIB_WINAPI
+#define NOMINMAX
 #include <zlib.h>
 #endif
 
