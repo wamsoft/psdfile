@@ -137,7 +137,7 @@ namespace psd {
     }
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent=0) {
-      dprint("Descriptor (size:%d, class:%s, name:%s)\n",
+      dprint("Descriptor (size:%d, class:%s, name:%ls)\n",
              itemCount(), classId.c_str(), name.c_str());
       int i = 0;
       for (ItemMap::iterator it = itemMap.begin(); it != itemMap.end(); it++, i++)	{
@@ -298,7 +298,7 @@ namespace psd {
     DescriptorString() : DescriptorItem(TYPE_STRING) {}
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (val:%s)\n", typeName(), val.c_str());
+      dprint("%s (val:%ls)\n", typeName(), val.c_str());
     }
 
     std::wstring val;
@@ -340,7 +340,7 @@ namespace psd {
     DescriptorClass(DescriptorType type) : DescriptorItem(type) {}
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (name:%s, class:%s)\n",
+      dprint("%s (name:%ls, class:%s)\n",
              typeName(), name.c_str(), classId.c_str());
     }
 
