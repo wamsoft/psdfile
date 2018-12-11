@@ -42,6 +42,12 @@ namespace psd {
     return true;
   }
 
+  bool loadLayerFillOpacity(LayerInfo &layer, AdditionalLayerInfo &additional)
+  {
+    layer.fill_opacity = additional.data->getCh();
+    return true;
+  }
+  
   bool loadLayerMetadata(LayerInfo &layer, AdditionalLayerInfo &additional)
   {
     int count = additional.data->getInt32();
