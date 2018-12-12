@@ -384,8 +384,9 @@ namespace psd {
 		int right;
 		std::vector<ChannelInfo> channels;
 		int blendModeKey;
-    BlendMode blendMode;
+		BlendMode blendMode;
 		int opacity;
+		int fill_opacity;
 		int clipping;
 		int flag;
 		LayerExtraData extraData;

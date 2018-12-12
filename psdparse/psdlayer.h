@@ -8,5 +8,6 @@ namespace psd {
   bool loadLayerUnicodeName(LayerInfo &layer, AdditionalLayerInfo &additional);
   bool loadLayerId(LayerInfo &layer, AdditionalLayerInfo &additional);
   bool loadLayerMetadata(LayerInfo &layer, AdditionalLayerInfo &additional);
+  bool loadLayerFillOpacity(LayerInfo &layer, AdditionalLayerInfo &additional);
 }
 #endif //  __psdlayer_h__

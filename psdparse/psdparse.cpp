@@ -154,7 +154,8 @@ Data::processParsed()
     layer.layerName = layer.extraData.layerName;
     layer.layerType = LAYER_TYPE_NORMAL;
     layer.layerId   = -1;
-
+    layer.fill_opacity = 255;
+    
     // チャネルイメージイテレータをチャネル毎に頭出しコピー
     for (uint32_t ch = 0; ch < layer.channels.size(); ch++) {
       ChannelInfo &channel = layer.channels[ch];
@@ -218,7 +219,10 @@ Data::processParsed()
       case 'shmd': // Metadata setting (Photoshop 6.0)
         success = loadLayerMetadata(layer, additional);
         break;
-
+      case 'iOpa': // fill opacity
+        success = loadLayerFillOpacity(layer, additional);
+        break;
+        
       // --- 未対応 ---
       case 'lrFX': // Effects Layer (Photoshop 5.0)
       case 'tySh': // Type Tool Info (Photoshop 5.0 and 5.5 only)

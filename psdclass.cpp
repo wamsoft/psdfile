@@ -248,6 +248,7 @@ PSD::getLayerInfo(int no)
 		SETPROP(dict, lay, width);
 		SETPROP(dict, lay, height);
 		SETPROP(dict, lay, opacity);
+		SETPROP(dict, lay, fill_opacity);
 		bool mask = false;
 		for (std::vector<psd::ChannelInfo>::iterator i = lay.channels.begin();
 				 i != lay.channels.end();
@@ -343,7 +344,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 		TVPThrowExceptionMessage(L"invalid layer type");
 	}
 
-	int left, top, width, height, opacity, type;
+	int left, top, width, height, opacity, fill_opacity, type;
 
 	bool dummyMask = false;
 	if (imageMode == psd::IMAGE_MODE_MASK) {
@@ -352,6 +353,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 		width = mask.width;
 		height = mask.height;
 		opacity = 255;
+                fill_opacity = 255;
 		type = ltPsNormal;
 		if (width == 0 || height == 0) {
 			left = top = 0;
@@ -364,6 +366,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 		width = lay.width;
 		height = lay.height;
 		opacity = lay.opacity;
+                fill_opacity = lay.fill_opacity;
 		type = convBlendMode(lay.blendMode);
 	}
 	if (width <= 0 || height <= 0) {
@@ -375,6 +378,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 	obj.SetValue(L"left", left);
 	obj.SetValue(L"top", top);
 	obj.SetValue(L"opacity", opacity);
+	obj.SetValue(L"fill_opacity", fill_opacity);
 	obj.SetValue(L"width",  width);
 	obj.SetValue(L"height", height);
 	obj.SetValue(L"type",   type);
