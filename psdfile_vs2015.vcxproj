@@ -57,7 +57,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..;..\ncbind;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;..\ncbind;..\tp_stub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PSDFILE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -79,7 +79,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..;..\ncbind;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..;..\ncbind;..\tp_stub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;PSDFILE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -102,7 +102,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\ncbind\ncbind.cpp" />
-    <ClCompile Include="..\tp_stub.cpp" />
+    <ClCompile Include="..\tp_stub\tp_stub.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="psdclass.cpp" />
     <ClCompile Include="psdclass_loadmem.cpp" />
@@ -117,7 +117,7 @@
     <ClInclude Include="..\ncbind\ncbind.hpp" />
     <ClInclude Include="..\ncbind\ncb_foreach.h" />
     <ClInclude Include="..\ncbind\ncb_invoke.hpp" />
-    <ClInclude Include="..\tp_stub.h" />
+    <ClInclude Include="..\tp_stub\tp_stub.h" />
     <ClInclude Include="psdclass.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
