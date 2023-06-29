@@ -602,7 +602,19 @@ namespace psd {
       return false;
     }
 
-    if (depth == 16)  {
+    // added
+    if (depth == 8)  {
+      uint8_t *ptrData = (uint8_t*)buf;
+      for (int i = 0; i < height; i++) {
+        uint8_t *ptr    = ptrData + i * width;
+        uint8_t *ptrEnd = ptrData + (i + 1) * width;
+        ptr++;
+        while (ptr < ptrEnd) {
+          *ptr += *(ptr - 1);
+          ptr++;
+        }
+      }
+    } else if (depth == 16)  { // changed
       uint8_t *ptrData = (uint8_t *)buf;
       for (int i = 0; i < height; i++) {
 #ifdef BOOST_LITTLE_ENDIAN
