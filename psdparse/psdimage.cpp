@@ -587,7 +587,7 @@ namespace psd {
                                 int width, int height, int depth)
   {
     void *buf = 0;
-    if (depth == 16)  {
+    if (depth == 8 || depth == 16)  {
       buf = dst;
     } else if (depth == 32) {
       buf = new uint8_t[dstSize];
