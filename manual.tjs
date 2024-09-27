@@ -1,20 +1,20 @@
 
 /**
- * �[���R�[�h�ɂ��}�j���A��
+ * 擬似コードによるマニュアル
  *
- * PSD�t�@�C���X�g���[�W�@�\
- * �ȉ��̃p�X����PSD�t�@�C���̃��C���摜�𒼐ڃt�@�C���Ƃ��ă��[�h�ł��܂�
+ * PSDファイルストレージ機能
+ * 以下のパス名でPSDファイルのレイヤ画像を直接ファイルとしてロードできます
  *
- * psd://PSD�t�@�C����/root/�t�H���_��/.../���C����.bmp
- * psd://PSD�t�@�C����/id/���C��ID.bmp
+ * psd://PSDファイル名/root/フォルダ名/.../レイヤ名.bmp
+ * psd://PSDファイル名/id/レイヤID.bmp
  *
- * �EPSD�t�@�C�����̓x�[�X���݂̂ŏ������Ő��K������܂�
- * �E�t�H���_���A���C�����͑S�ď������Ő��K������Ċ܂܂��"/" �� "_" �ɒu������܂�
- * �E���O���d������ꍇ�͌�ɂ�����̂��D��ɂȂ�܂�
+ * ・PSDファイル名はベース名のみで小文字で正規化されます
+ * ・フォルダ名、レイヤ名は全て小文字で正規化されて含まれる"/" は "_" に置換されます
+ * ・名前が重複する場合は後にあるものが優先になります
  */
 class PSD {
 
-	// �J���[���[�h��`
+	// カラーモード定義
 	color_mode_bitmap 		= 0;
 	color_mode_grayscale 	= 1;
 	color_mode_indexed		= 2;
@@ -24,15 +24,15 @@ class PSD {
 	color_mode_duotone		= 8;
 	color_mode_lab			= 9;
 
-	// ���C����ʒ�`
-	layer_type_normal = 0; // �ʏ탌�C��
-	layer_type_hidden = 1; // �t�H���_��؂�(�����\���p�̉B�����C���Ȃ̂Ŗ�������)
-	layer_type_folder = 2; // �t�H���_���C��
-	layer_type_adjust = 3; // �������C��
-	layer_type_fill   = 4; // �h��Ԃ����C��
+	// レイヤ種別定義
+	layer_type_normal = 0; // 通常レイヤ
+	layer_type_hidden = 1; // フォルダ区切り(内部構造用の隠しレイヤなので無視推奨)
+	layer_type_folder = 2; // フォルダレイヤ
+	layer_type_adjust = 3; // 調整レイヤ
+	layer_type_fill   = 4; // 塗りつぶしレイヤ
 
-	// �������[�h��`
-	blend_mode_invalid = -1;  // ���m�A���邢�͉��炩�̗��R�Ŏ擾�o���Ȃ������P�[�X
+	// 合成モード定義
+	blend_mode_invalid = -1;  // 未知、あるいは何らかの理由で取得出来なかったケース
 	blend_mode_normal = 0;
 	blend_mode_dissolve = 1;
 	blend_mode_darken = 2;
@@ -57,190 +57,190 @@ class PSD {
 	blend_mode_color = 21;
 	blend_mode_luminosity = 22;
 	blend_mode_pass_through = 23;
-	blend_mode_darker_color = 24;	// �����ȍ~��libpsd�łƂ͔�݊�(libpsd�łɂ͂Ȃ�)
+	blend_mode_darker_color = 24;	// ここ以降はlibpsd版とは非互換(libpsd版にはない)
 	blend_mode_lighter_color = 25;
 	blend_mode_subtract = 26;
 	blend_mode_divide = 27;
 
 	/**
-	 * PSD�摜�̃��[�h
-	 * @param filename �t�@�C����
-	 * @return ���[�h�ɐ��������� true
+	 * PSD画像のロード
+	 * @param filename ファイル名
+	 * @return ロードに成功したら true
 	 */
 	function load(filename);
 
-	// �摜�̊�{�v���p�e�B
+	// 画像の基本プロパティ
 	
-	property width; //< �摜����
-	property height; //< �摜�c��
-	property channels; //< �`�����l����
-	property color_mode; //< �J���[���[�h
-	property layer_count; //< ���C����
+	property width; //< 画像横幅
+	property height; //< 画像縦幅
+	property channels; //< チャンネル数
+	property color_mode; //< カラーモード
+	property layer_count; //< レイヤ数
 
 	/**
-	 * ���C����ʂ̎擾
-	 * @param no ���C���ԍ�
-	 * @return ���C�����
+	 * レイヤ種別の取得
+	 * @param no レイヤ番号
+	 * @return レイヤ種別
 	 */
 	function getLayerType(no);
 
 	/**
-	 * ���C���̖��O�̎擾
-	 * @param no ���C���ԍ�
-	 * @return ���C������
+	 * レイヤの名前の取得
+	 * @param no レイヤ番号
+	 * @return レイヤ名称
 	 */
 	function getLayerName(no);
 
 	/**
-	 * ���C���̏��̎擾
-	 * @param no ���C���ԍ�
-	 * @return ���C����񂪂͂���������
-	 * �����̓��e
-	 * layer_type   ���C�����
-	 * top          ����W
-	 * left         �����W
-	 * bottom       ����W
-	 * right        �E���W
-	 * width        ����
-	 * height       �c��
-	 * blend_mode   �������[�h
-	 * opacity      �s�����x
-	 * fill_opacity �h��̕s�����x
-	 * visible      �\�����
-	 * name         ���C����
-	 * type         �������[�h�i�g���g���̑Ή����[�h)
-	 * clipping	�N���b�s���O�}�X�N�̑Ώۂ��H
-	 * mask		���C���}�X�N�������Ă��邩�ǂ����H
-	 * layer_comp    ���C���[�J���v���(�J���vID���L�[�Ƃ�������)
-	 *   %[ <id>: [ id,       // �J���vID(getLayerComp() ���Q�Ƃ��Ă�������)
-	 *              offset_x, // ���C����X�I�t�Z�b�g
-	 *              offset_y, // ���C����Y�I�t�Z�b�g
-	 *              enable,   // �\����ԃt���O
+	 * レイヤの情報の取得
+	 * @param no レイヤ番号
+	 * @return レイヤ情報がはいった辞書
+	 * 辞書の内容
+	 * layer_type   レイヤ種別
+	 * top          上座標
+	 * left         左座標
+	 * bottom       底座標
+	 * right        右座標
+	 * width        横幅
+	 * height       縦幅
+	 * blend_mode   合成モード
+	 * opacity      不透明度
+	 * fill_opacity 塗りの不透明度
+	 * visible      表示状態
+	 * name         レイヤ名
+	 * type         合成モード（吉里吉里の対応モード)
+	 * clipping	クリッピングマスクの対象か？
+	 * mask		レイヤマスクを持っているかどうか？
+	 * layer_comp    レイヤーカンプ情報(カンプIDをキーとした辞書)
+	 *   %[ <id>: [ id,       // カンプID(getLayerComp() を参照してください)
+	 *              offset_x, // レイヤのXオフセット
+	 *              offset_y, // レイヤのYオフセット
+	 *              enable,   // 表示状態フラグ
 	 *            ],... ]
 	 */
 	function getLayerInfo(no);
 
 	/**
-	 * ���C���f�[�^�̓ǂݏo��
-	 * @param layer �ǂݏo���惌�C��
-	 * @param no ���C���ԍ�
-	 * layer_type �� layer_type_normal �̏ꍇ�̂ݓǂݍ��݂ł��܂�
-	 * �C���[�W�ƃ}�X�N������������Ԃœǂݏo���܂��B
-	 * �f�[�^���e�̂ق��ȉ��̃v���p�e�B�������I�Ƀ��C���ɐݒ肳��܂�
-	 * left          �����W
-	 * top           ����W
-	 * width         ����
-	 * height        �c��
-	 * type          �������[�h
-	 * opacity       �s�����x
-	 * fill_opacity	 �h��̕s�����x
-	 * visible       �\�����
-	 * imageLeft     0�ɂȂ�܂�
-	 * imageTop      0�ɂȂ�܂�
-	 * imageWidth    width �ɂȂ�܂�
-	 * imageHeight   height �ɂȂ�܂�
-	 * name          name ���ݒ肳��܂�
+	 * レイヤデータの読み出し
+	 * @param layer 読み出し先レイヤ
+	 * @param no レイヤ番号
+	 * layer_type が layer_type_normal の場合のみ読み込みできます
+	 * イメージとマスクを合成した状態で読み出します。
+	 * データ内容のほか以下のプロパティが自動的にレイヤに設定されます
+	 * left          左座標
+	 * top           上座標
+	 * width         横幅
+	 * height        縦幅
+	 * type          合成モード
+	 * opacity       不透明度
+	 * fill_opacity	 塗りの不透明度
+	 * visible       表示状態
+	 * imageLeft     0になります
+	 * imageTop      0になります
+	 * imageWidth    width になります
+	 * imageHeight   height になります
+	 * name          name が設定されます
 	 */
 	function getLayerData(layer, no);
 
 	/**
-	 * ���C���f�[�^�̓ǂݏo��
-	 * @param layer �ǂݏo���惌�C��
-	 * @param no ���C���ԍ�
-	 * layer_type �� layer_type_normal �̏ꍇ�̂ݓǂݍ��݂ł��܂�
-	 * �C���[�W�݂̂�ǂݏo���܂��B
-	 * �f�[�^���e�̂ق��ȉ��̃v���p�e�B�������I�Ƀ��C���ɐݒ肳��܂�
-	 * left          �����W
-	 * top           ����W
-	 * width         ����
-	 * height        �c��
-	 * type          �������[�h
-	 * opacity       �s�����x
-	 * fill_opacity	 �h��̕s�����x
-	 * visible       �\�����
-	 * imageLeft     0�ɂȂ�܂�
-	 * imageTop      0�ɂȂ�܂�
-	 * imageWidth    width �ɂȂ�܂�
-	 * imageHeight   height �ɂȂ�܂�
-	 * name          name ���ݒ肳��܂�
+	 * レイヤデータの読み出し
+	 * @param layer 読み出し先レイヤ
+	 * @param no レイヤ番号
+	 * layer_type が layer_type_normal の場合のみ読み込みできます
+	 * イメージのみを読み出します。
+	 * データ内容のほか以下のプロパティが自動的にレイヤに設定されます
+	 * left          左座標
+	 * top           上座標
+	 * width         横幅
+	 * height        縦幅
+	 * type          合成モード
+	 * opacity       不透明度
+	 * fill_opacity	 塗りの不透明度
+	 * visible       表示状態
+	 * imageLeft     0になります
+	 * imageTop      0になります
+	 * imageWidth    width になります
+	 * imageHeight   height になります
+	 * name          name が設定されます
 	 */
 	function getLayerDataRaw(layer, no);
 
 	/**
-	 * ���C���f�[�^�̓ǂݏo��
-	 * @param layer �ǂݏo���惌�C��
-	 * @param no ���C���ԍ�
-	 * layer_type �� layer_type_normal �̏ꍇ�̂ݓǂݍ��݂ł��܂�
-	 * �}�X�N�݂̂�ǂݏo���܂��B
-	 * �}�X�N�̃C���[�W�T�C�Y��0��defualtMaskColor�݂̂��ݒ肳��Ă���P�[�X�ł́A
-	 * �u���C���T�C�Y��0�ɂ͐ݒ�ł��Ȃ��v�ƌ����g���g���̐�����������邽�߁A
-	 * (0,0)-(1,1)�̍ŏ��T�C�Y�̃��C�����_�~�[�ō��AdefaultMaskColor��fill���ĕԂ��܂��B
-	 * �f�[�^���e�̂ق��ȉ��̃v���p�e�B�������I�Ƀ��C���ɐݒ肳��܂�
-	 * left          �����W
-	 * top           ����W
-	 * width         ����
-	 * height        �c��
-	 * type          �������[�h
-	 * opacity       �s�����x
-	 * fill_opacity	 �h��̕s�����x
-	 * visible       �\�����
-	 * imageLeft     0�ɂȂ�܂�
-	 * imageTop      0�ɂȂ�܂�
-	 * imageWidth    width �ɂȂ�܂�
-	 * imageHeight   height �ɂȂ�܂�
-	 * name          name ���ݒ肳��܂�
-     * defaultMaskColor  �擾�̈�O�̃}�X�N�J���[(���0��255�̂ǂ��炩)
+	 * レイヤデータの読み出し
+	 * @param layer 読み出し先レイヤ
+	 * @param no レイヤ番号
+	 * layer_type が layer_type_normal の場合のみ読み込みできます
+	 * マスクのみを読み出します。
+	 * マスクのイメージサイズが0でdefualtMaskColorのみが設定されているケースでは、
+	 * 「レイヤサイズを0には設定できない」と言う吉里吉里の制限を回避するため、
+	 * (0,0)-(1,1)の最小サイズのレイヤをダミーで作り、defaultMaskColorでfillして返します。
+	 * データ内容のほか以下のプロパティが自動的にレイヤに設定されます
+	 * left          左座標
+	 * top           上座標
+	 * width         横幅
+	 * height        縦幅
+	 * type          合成モード
+	 * opacity       不透明度
+	 * fill_opacity	 塗りの不透明度
+	 * visible       表示状態
+	 * imageLeft     0になります
+	 * imageTop      0になります
+	 * imageWidth    width になります
+	 * imageHeight   height になります
+	 * name          name が設定されます
+     * defaultMaskColor  取得領域外のマスクカラー(常に0か255のどちらか)
 	 */
 	function getLayerDataMask(layer, no);
 
 	/**
-	 * �X���C�X�f�[�^�̓ǂݏo��
-	 * @return �X���C�X��񎫏� %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
-	 *         �X���C�X��񂪂Ȃ��ꍇ�� void ��Ԃ�
-	 *         �X���C�X�̈�ԍŌ�͑S�X���C�X���܂ރT�C�Y�̃X���C�X�̂悤�ł�
+	 * スライスデータの読み出し
+	 * @return スライス情報辞書 %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
+	 *         スライス情報がない場合は void を返す
+	 *         スライスの一番最後は全スライスを含むサイズのスライスのようです
 	 */
 	function getSlices();
 
 	/**
-	 * �K�C�h�f�[�^�̓ǂݏo��
-	 * @return �K�C�h��񎫏� %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
-	 *         �K�C�h��񂪂Ȃ��ꍇ�� void ��Ԃ�
+	 * ガイドデータの読み出し
+	 * @return ガイド情報辞書 %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
+	 *         ガイド情報がない場合は void を返す
 	 */
 	function getGuides();
 
 	/**
-	 * �������ʂ̎擾�B
-	 * ���C�u�������ō������s���킯�ł͂Ȃ��APSD�ɕۑ����ꂽ�������ʂ�ǂݏo���܂��B
-	 * �ۑ����@�ɂ���Ă͂��̉摜�͑��݂��Ȃ��\��������܂��B
-	 * �܂��A���C�������݂��Ȃ��J���[���[�h(2�l�A�C���f�b�N�X�J���[)�̏ꍇ�ɂ�
-	 * �摜�f�[�^�͂��̃��\�b�h�Ŏ擾����K�v������܂��B
-	 * @param layer �i�[�惌�C��
-	 * @return �擾�ɐ��������� true
+	 * 合成結果の取得。
+	 * ライブラリ中で合成を行うわけではなく、PSDに保存された合成結果を読み出します。
+	 * 保存方法によってはこの画像は存在しない可能性があります。
+	 * また、レイヤが存在しないカラーモード(2値、インデックスカラー)の場合には
+	 * 画像データはこのメソッドで取得する必要があります。
+	 * @param layer 格納先レイヤ
+	 * @return 取得に成功したら true
 	 */
 	function getBlend(layer);
 
 	/**
-	 * ���C���[�J���v�f�[�^�̓ǂݏo��
-	 * @return �K�C�h��񎫏� %[ last_applied_id,  // Photoshp��ōŌ�ɓK�p��Ԃ�����id
-	 *                           comps:[id,                // �J���vID
-	 *                                  record_visibility, // �\��/��\�����L�^���Ă��邩
-	 *                                  record_position,   // �ʒu���L�^���Ă��邩
-	 *                                  record_appearance, // �O��(���C���[�G�t�F�N�g)���L�^���Ă��邩
-	 *                                  name,              // �J���v��
-	 *                                  comment,           // �R�����g
+	 * レイヤーカンプデータの読み出し
+	 * @return ガイド情報辞書 %[ last_applied_id,  // Photoshp上で最後に適用状態だったid
+	 *                           comps:[id,                // カンプID
+	 *                                  record_visibility, // 表示/非表示を記録しているか
+	 *                                  record_position,   // 位置を記録しているか
+	 *                                  record_appearance, // 外観(レイヤーエフェクト)を記録しているか
+	 *                                  name,              // カンプ名
+	 *                                  comment,           // コメント
 	 *                                  ],... ]
-	 *         �J���v��񂪂Ȃ��ꍇ�� void ��Ԃ�
+	 *         カンプ情報がない場合は void を返す
 	 *
-	 *   �Erecord_xxx �t���O�������Ă��ȏꍇ�͍Ō�ɓK�p�����J���v(last_applied_id �ł͂Ȃ�
-	 *     �v���O�����ōŌ�ɓK�p�����J���v)�̏�Ԃ������p���܂�
-	 *   �E�J���vID�ɑΉ������e���C���[���Ƃ̕\����ԏ��́A���C���[���� layer_comp
-	 *     �v���p�e�B�ɃJ���vID���L�[�Ƃ��������Ɋi�[���Ă���܂��B
+	 *   ・record_xxx フラグが立っていな場合は最後に適用したカンプ(last_applied_id ではなく
+	 *     プログラムで最後に適用したカンプ)の状態を引き継ぎます
+	 *   ・カンプIDに対応した各レイヤーごとの表示状態情報は、レイヤー情報の layer_comp
+	 *     プロパティにカンプIDをキーとした辞書に格納してあります。
 	 */
 	function getLayerComp();
 
 	/**
 	 * static method
-	 * �X�g���[�W�Ƃ��ĕێ�����Ă�L���b�V�����N���A����
+	 * ストレージとして保持されてるキャッシュをクリアする
 	 */
 	function clearStorageCache();
 };

@@ -7,17 +7,17 @@
 #include <vector>
 
 namespace psd {
-  // ƒŒƒCƒ„ƒ^ƒCƒv
+  // ãƒ¬ã‚¤ãƒ¤ã‚¿ã‚¤ãƒ—
   enum LayerType {
-    LAYER_TYPE_NORMAL,    // ’ÊíƒŒƒCƒ„
-    LAYER_TYPE_HIDDEN,    // ƒtƒHƒ‹ƒ_‹æØ‚è
-    LAYER_TYPE_FOLDER,    // ƒtƒHƒ‹ƒ_ƒŒƒCƒ„
-    LAYER_TYPE_ADJUST,    // ’²®ƒŒƒCƒ„
-    LAYER_TYPE_FILL,      // “h‚è‚Â‚Ô‚µƒŒƒCƒ„
-    LAYER_TYPE_TEXT,      // ƒeƒLƒXƒgƒŒƒCƒ„
+    LAYER_TYPE_NORMAL,    // é€šå¸¸ãƒ¬ã‚¤ãƒ¤
+    LAYER_TYPE_HIDDEN,    // ãƒ•ã‚©ãƒ«ãƒ€åŒºåˆ‡ã‚Š
+    LAYER_TYPE_FOLDER,    // ãƒ•ã‚©ãƒ«ãƒ€ãƒ¬ã‚¤ãƒ¤
+    LAYER_TYPE_ADJUST,    // èª¿æ•´ãƒ¬ã‚¤ãƒ¤
+    LAYER_TYPE_FILL,      // å¡—ã‚Šã¤ã¶ã—ãƒ¬ã‚¤ãƒ¤
+    LAYER_TYPE_TEXT,      // ãƒ†ã‚­ã‚¹ãƒˆãƒ¬ã‚¤ãƒ¤
   };
 
-  // ’PˆÊ
+  // å˜ä½
   enum Unit {
     UNIT_INCH    = 1,    // inch
     UNIT_CM      = 2,    // cm
@@ -101,7 +101,7 @@ namespace psd {
     BLEND_MODE_COLOR,         // color
     BLEND_MODE_LUMINOSITY,    // luminosity
     BLEND_MODE_PASS_THROUGH,  // pass
-    // ˆÈ~‚Í libpsd ”ñŒİŠ·
+    // ä»¥é™ã¯ libpsd éäº’æ›
     BLEND_MODE_DARKER_COLOR,  // darker color
     BLEND_MODE_LIGHTER_COLOR, // lighter color
     BLEND_MODE_SUBTRACT,      // subtract
@@ -142,13 +142,13 @@ namespace psd {
     }
   }
 
-  // ƒKƒCƒhƒf[ƒ^‚Ì•ûŒü
+  // ã‚¬ã‚¤ãƒ‰ãƒ‡ãƒ¼ã‚¿ã®æ–¹å‘
   enum GuideDirection {
     GUIDE_DIR_VERTICAL = 0,
     GGUIDE_DIR_HORIZONTAL = 1
   };
 
-	// ƒwƒbƒ_î•ñ
+	// ãƒ˜ãƒƒãƒ€æƒ…å ±
 	struct Header {
 		int version;
 		int channels;
@@ -158,7 +158,7 @@ namespace psd {
 		int mode;
 	};
 
-  // RGBAƒJƒ‰[
+  // RGBAã‚«ãƒ©ãƒ¼
   struct ColorRgba {
     uint8_t r;
     uint8_t g;
@@ -166,15 +166,15 @@ namespace psd {
     uint8_t a;
   };
 
-  // ƒJƒ‰[ƒe[ƒuƒ‹
+  // ã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒ–ãƒ«
   struct ColorTable {
     ColorTable() : transparencyIndex(-1), validCount(0) {}
-    std::vector<ColorRgba> colors; // QÆ‘¤‚Ì•Ö‹Xãí‚Éƒtƒ‹ƒTƒCƒY(256)•ÛØ
-    int16_t transparencyIndex;     // “§–¾FƒCƒ“ƒfƒbƒNƒX(“–ŠYƒGƒ“ƒgƒŠ‚Ía=0x0ƒZƒbƒgÏ)
-    int16_t validCount;            // —LŒø‚ÈƒGƒ“ƒgƒŠ”
+    std::vector<ColorRgba> colors; // å‚ç…§å´ã®ä¾¿å®œä¸Šå¸¸ã«ãƒ•ãƒ«ã‚µã‚¤ã‚º(256)ä¿è¨¼
+    int16_t transparencyIndex;     // é€æ˜è‰²ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹(å½“è©²ã‚¨ãƒ³ãƒˆãƒªã¯a=0x0ã‚»ãƒƒãƒˆæ¸ˆ)
+    int16_t validCount;            // æœ‰åŠ¹ãªã‚¨ãƒ³ãƒˆãƒªæ•°
   };
 
-  // ƒŒƒCƒ„[ƒJƒ“ƒv
+  // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
   struct LayerComp {
     int id;
     bool isRecordVisibility;
@@ -184,7 +184,7 @@ namespace psd {
     std::wstring comment;
   };
 
-  // ƒŒƒCƒ„[‚²‚Æ‚ÌƒŒƒCƒ„[ƒJƒ“ƒvî•ñ
+  // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã”ã¨ã®ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—æƒ…å ±
   struct LayerCompInfo {
     int id;
     int offsetX;
@@ -192,7 +192,7 @@ namespace psd {
     bool isEnabled;
   };
 
-  // ƒXƒ‰ƒCƒXƒAƒCƒeƒ€
+  // ã‚¹ãƒ©ã‚¤ã‚¹ã‚¢ã‚¤ãƒ†ãƒ 
   struct SliceItem {
     int id;
     int groupId;
@@ -218,7 +218,7 @@ namespace psd {
     uint8_t colorB;
   };
 
-  // ƒXƒ‰ƒCƒXƒŠƒ\[ƒX
+  // ã‚¹ãƒ©ã‚¤ã‚¹ãƒªã‚½ãƒ¼ã‚¹
   struct SliceResource {
     SliceResource() : isEnabled(false) {}
 
@@ -231,13 +231,13 @@ namespace psd {
     std::vector<SliceItem> slices;
   };
 
-  // ƒKƒCƒhƒAƒCƒeƒ€
+  // ã‚¬ã‚¤ãƒ‰ã‚¢ã‚¤ãƒ†ãƒ 
   struct GuideItem {
     int location;
     GuideDirection direction;
   };
   
-  // ƒOƒŠƒbƒhƒKƒCƒhƒŠƒ\[ƒX
+  // ã‚°ãƒªãƒƒãƒ‰ã‚¬ã‚¤ãƒ‰ãƒªã‚½ãƒ¼ã‚¹
   struct GridGuideResource {
     GridGuideResource() : isEnabled(false) {}
     
@@ -247,7 +247,7 @@ namespace psd {
     std::vector<GuideItem> guides;
   };
 
-	// ƒCƒ[ƒWƒŠƒ\[ƒXî•ñ
+	// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹æƒ…å ±
 	struct ImageResourceInfo {
 		ImageResourceInfo(uint16_t id, std::string &name, int size, IteratorBase *data) : id(id), name(name), size(size), data(data) {};
 		~ImageResourceInfo() {
@@ -267,10 +267,10 @@ namespace psd {
 			this->data = self.data == 0 ? 0 : self.data->clone();
 			return *this;
 		}
-    uint16_t id;         // ¯•ÊID
-		std::string name;    // –¼‘O
-		int size;            // ƒTƒCƒY
-		IteratorBase *data;  // QÆ
+    uint16_t id;         // è­˜åˆ¥ID
+		std::string name;    // åå‰
+		int size;            // ã‚µã‚¤ã‚º
+		IteratorBase *data;  // å‚ç…§
 	};
 	
 	struct GlobalLayerMaskInfo {
@@ -311,7 +311,7 @@ namespace psd {
 		std::vector<LayerBlendingChannel> channels;
 	};
 
-	// ’Ç‰ÁƒŒƒCƒ„î•ñ
+	// è¿½åŠ ãƒ¬ã‚¤ãƒ¤æƒ…å ±
 	struct AdditionalLayerInfo {
     AdditionalLayerInfo(int sigType, int key, int size, IteratorBase *data) : sigType(sigType), key(key), size(size), data(data) {
 		}
@@ -345,7 +345,7 @@ namespace psd {
     std::vector<AdditionalLayerInfo> additionalLayers;
 	};
 
-	// ƒ`ƒƒƒ“ƒlƒ‹î•ñ
+	// ãƒãƒ£ãƒ³ãƒãƒ«æƒ…å ±
 	struct ChannelInfo {
 		ChannelInfo(int id, int length) : id(id), length(length), imageData(0) {};
     ~ChannelInfo() { delete imageData; }
@@ -369,10 +369,10 @@ namespace psd {
     bool isMaskChannel() { return (id == -3 || id == -2); }
 	};
 
-	// ƒŒƒCƒ„î•ñ
+	// ãƒ¬ã‚¤ãƒ¤æƒ…å ±
   class Data;
 	struct LayerInfo {
-    // ƒŒƒCƒ„‚ÌŠ‘®‚·‚épsd::DataƒCƒ“ƒXƒ^ƒ“ƒX
+    // ãƒ¬ã‚¤ãƒ¤ã®æ‰€å±ã™ã‚‹psd::Dataã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
     Data *owner;
     
     // parsed raw data
@@ -398,13 +398,13 @@ namespace psd {
     std::wstring layerNameUnicode;
     // int layerNameId;
     // int foreignEffectId;
-    // BlendMode folderBlendMode; // blendMode ã‘‚«‚É‚µ‚Ä‚¢‚éB–â‘è‚ ‚ê‚Î•ª—£
+    // BlendMode folderBlendMode; // blendMode ä¸Šæ›¸ãã«ã—ã¦ã„ã‚‹ã€‚å•é¡Œã‚ã‚Œã°åˆ†é›¢
 
-    // ƒŒƒCƒ„[ƒJƒ“ƒvî•ñ
+    // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—æƒ…å ±
     std::map<int, LayerCompInfo> layerComps;
-    Descriptor layerCompDesc; // ƒfƒBƒXƒNƒŠƒvƒ^Œ`®‚Å‘Sƒƒ^ƒf[ƒ^‚ğŠi”[
+    Descriptor layerCompDesc; // ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿å½¢å¼ã§å…¨ãƒ¡ã‚¿ãƒ‡ãƒ¼ã‚¿ã‚’æ ¼ç´
 
-    // eƒtƒHƒ‹ƒ_ƒŒƒCƒ„
+    // è¦ªãƒ•ã‚©ãƒ«ãƒ€ãƒ¬ã‚¤ãƒ¤
     LayerInfo *parent;
 
     bool isTransparencyProtected() { return (flag & (1 << 0)) != 0; }
@@ -419,7 +419,7 @@ namespace psd {
 	 */
 	class Data {
 	public:
-		// ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+		// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 		Data()
 			 : colorModeSize(0), colorModeIterator(0),
 			   mergedAlpha(false), channelImageData(0),
@@ -427,12 +427,12 @@ namespace psd {
 		{
 		}
 
-		// ƒfƒXƒgƒ‰ƒNƒ^
+		// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 		virtual ~Data() {
 			clearData();
 		}
 
-		// •Ûƒf[ƒ^‚ÌÁ‹
+		// ä¿æŒãƒ‡ãƒ¼ã‚¿ã®æ¶ˆå»
 		virtual void clearData() {
 			delete colorModeIterator; colorModeIterator = 0;
 			delete channelImageData; channelImageData = 0;
@@ -440,44 +440,44 @@ namespace psd {
 		}
 
 
-		// ƒŒƒCƒ„‚ğƒŒƒCƒ„ID‚Åæ“¾
+		// ãƒ¬ã‚¤ãƒ¤ã‚’ãƒ¬ã‚¤ãƒ¤IDã§å–å¾—
     LayerInfo *getLayerById(int layerId);
 
 		// ---------------------------------------
-		// ƒCƒ[ƒWƒŠƒ\[ƒX
+		// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹
 		// ---------------------------------------
 
-		// ƒwƒbƒ_î•ñ
+		// ãƒ˜ãƒƒãƒ€æƒ…å ±
 		Header header;
 
-		// ƒJƒ‰[ƒ‚[ƒhî•ñ
+		// ã‚«ãƒ©ãƒ¼ãƒ¢ãƒ¼ãƒ‰æƒ…å ±
 		int colorModeSize;
 		IteratorBase *colorModeIterator;
 		
-		// ƒCƒ[ƒWƒŠƒ\[ƒXˆê——
+		// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹ä¸€è¦§
 		std::vector<ImageResourceInfo> imageResourceList;
 		
-		// ‡¬ƒ¿î•ñ‚ª‚ ‚é‚©‚Ç‚¤‚©
+		// åˆæˆÎ±æƒ…å ±ãŒã‚ã‚‹ã‹ã©ã†ã‹
 		bool mergedAlpha;
 
-		// ƒŒƒCƒ„î•ñˆê——
+		// ãƒ¬ã‚¤ãƒ¤æƒ…å ±ä¸€è¦§
 		std::vector<LayerInfo> layerList;
 
-		// ƒ`ƒƒƒ“ƒlƒ‹‰æ‘œƒf[ƒ^
+		// ãƒãƒ£ãƒ³ãƒãƒ«ç”»åƒãƒ‡ãƒ¼ã‚¿
 		IteratorBase *channelImageData;
 		
 		// global layer mask info
 		GlobalLayerMaskInfo globalLayerMaskInfo;
 		
-		// ‡¬Ï‚İ‰æ‘œƒf[ƒ^
+		// åˆæˆæ¸ˆã¿ç”»åƒãƒ‡ãƒ¼ã‚¿
 		IteratorBase *imageData;
 
-    // “WŠJÏ‚İƒŠƒ\[ƒXƒf[ƒ^
-    SliceResource      slice;       // ƒXƒ‰ƒCƒX
-    GridGuideResource  gridGuide;   // ƒOƒŠƒbƒh/ƒKƒCƒh
-    ColorTable         colorTable;  // ƒJƒ‰[ƒe[ƒuƒ‹(ƒCƒ“ƒfƒbƒNƒXƒJƒ‰[—p)
-    std::vector<LayerComp> layerComps; // ƒŒƒCƒ„[ƒJƒ“ƒv
-    int lastAppliedCompId;             // ÅI“K—pƒJƒ“ƒv
+    // å±•é–‹æ¸ˆã¿ãƒªã‚½ãƒ¼ã‚¹ãƒ‡ãƒ¼ã‚¿
+    SliceResource      slice;       // ã‚¹ãƒ©ã‚¤ã‚¹
+    GridGuideResource  gridGuide;   // ã‚°ãƒªãƒƒãƒ‰/ã‚¬ã‚¤ãƒ‰
+    ColorTable         colorTable;  // ã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒ–ãƒ«(ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚«ãƒ©ãƒ¼ç”¨)
+    std::vector<LayerComp> layerComps; // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
+    int lastAppliedCompId;             // æœ€çµ‚é©ç”¨ã‚«ãƒ³ãƒ—
 
   protected:
     bool processParsed();

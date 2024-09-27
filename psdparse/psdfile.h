@@ -3,39 +3,39 @@
 #include <boost/iostreams/device/mapped_file.hpp>
 
 namespace psd {
-  // �C���[�W�擾���[�h
+  // イメージ取得モード
   enum ImageMode {
-    IMAGE_MODE_IMAGE,       // �}�X�N�����肱�܂Ȃ��C���[�W�f�[�^
-    IMAGE_MODE_MASK,        // �}�X�N���݂̂̃C���[�W�f�[�^(�O���[)
-    IMAGE_MODE_MASKEDIMAGE, // �}�X�N���A���t�@�ɌJ�荞�񂾃C���[�W�f�[�^
+    IMAGE_MODE_IMAGE,       // マスクをくりこまないイメージデータ
+    IMAGE_MODE_MASK,        // マスク情報のみのイメージデータ(グレー)
+    IMAGE_MODE_MASKEDIMAGE, // マスクをアルファに繰り込んだイメージデータ
   };
   
   /**
-   * PSD�t�@�C���N���X
+   * PSDファイルクラス
    */
   class PSDFile : public Data {
   public:
     PSDFile() : isLoaded(false) {}
     ~PSDFile() {}
 
-    // �ǂݍ��ݍς݃t���O
+    // 読み込み済みフラグ
     bool isLoaded;
     
-    // �t�@�C�����[�h�G���g��
+    // ファイルロードエントリ
     bool load(const char *filename);
 
-		// �摜�f�[�^�擾�C���^�t�F�[�X(�o�b�t�@�s�b�`���O�̏ꍇ��full fill����܂�)
-    // �����ς݉摜(PSD�ɕێ�����Ă���ꍇ�̂�)
+		// 画像データ取得インタフェース(バッファピッチが０の場合はfull fillされます)
+    // 合成済み画像(PSDに保持されている場合のみ)
     bool getMergedImage(void *buf, const ColorFormat &format, int bufPitchByte);
-    // ���C���摜
+    // レイヤ画像
     bool getLayerImage(LayerInfo &layer, void *buf, const ColorFormat &format,
                        int bufPitchByte, ImageMode mode);
     bool getLayerImageById(int layerId, void *buf, const ColorFormat &format,
                            int bufPitchByte, ImageMode mode);
 
   private:
-		// loadFile�Ŏg�p���郁�����}�b�v�h�t�@�C��
-    // (�摜�̒x���ǂݍ��݂̊֌W�� Data �������Ԓ��͊J�����ςȂ�)
+		// loadFileで使用するメモリマップドファイル
+    // (画像の遅延読み込みの関係上 Data 生存期間中は開きっぱなし)
     boost::iostreams::mapped_file_source in;
   };
 

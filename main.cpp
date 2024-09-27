@@ -3,43 +3,43 @@
 #include "psdclass.h"
 
 // -----------------------------------------------------------------------------
-// ƒXƒgƒŒ[ƒW‹@”\
+// ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸æ©Ÿèƒ½
 // -----------------------------------------------------------------------------
 
 #define BASENAME L"psd"
 
 /**
- * PSDƒXƒgƒŒ[ƒW
+ * PSDã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸
  */
 class PSDStorage : public iTVPStorageMedia, tTVPCompactEventCallbackIntf
 {
 public:
 
 	/**
-	 * ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	 * ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	 */
 	PSDStorage() : refCount(1) {
 	}
 
 	/**
-	 * ƒfƒXƒgƒ‰ƒNƒ^
+	 * ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	 */
 	virtual ~PSDStorage() {
 			clearCache();
 	}
 
 	/*
-	 * PSDƒIƒuƒWƒFƒNƒgQÆ‚ğ’Ç‰Á
-	 * @param filename QÆƒtƒ@ƒCƒ‹–¼
-	 * @param psd PSDƒIƒuƒWƒFƒNƒg
+	 * PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå‚ç…§ã‚’è¿½åŠ 
+	 * @param filename å‚ç…§ãƒ•ã‚¡ã‚¤ãƒ«å
+	 * @param psd PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
 	 */
 	void add(ttstr filename, PSD *psd) {
 		psdMap[filename] = psd;
 	}
 	
 	/**
-	 * PSDƒIƒuƒWƒFƒNƒgQÆ‚ÌÁ‹—v‹
-	 * @param psd PSDƒIƒuƒWƒFƒNƒg
+	 * PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå‚ç…§ã®æ¶ˆå»è¦æ±‚
+	 * @param psd PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
 	 */
 	void remove(PSD *psd) {
 		PSDMap::iterator it = psdMap.begin();
@@ -53,7 +53,7 @@ public:
 	}
 
 	/**
-	 * ƒLƒƒƒbƒVƒ…î•ñ‚ğƒNƒŠƒA‚·‚é
+	 * ã‚­ãƒ£ãƒƒã‚·ãƒ¥æƒ…å ±ã‚’ã‚¯ãƒªã‚¢ã™ã‚‹
 	 */
 	void clearCache() {
 		cache.Clear();
@@ -109,7 +109,7 @@ public:
 	// name does not contain in-archive storage name but
 	// is normalized.
 	virtual tTJSBinaryStream * TJS_INTF_METHOD Open(const ttstr & name, tjs_uint32 flags) {
-		if (flags == TJS_BS_READ) { // “Ç‚İ‚İ‚Ì‚İ
+		if (flags == TJS_BS_READ) { // èª­ã¿è¾¼ã¿ã®ã¿
 			ttstr fname;
 			PSD *psd = getPSD(name, fname);
 			if (psd) {
@@ -154,15 +154,15 @@ public:
 protected:
 
 	/*
-	 * ƒtƒ@ƒCƒ‹–¼‚É‡’v‚µ‚½ PSD î•ñ‚ğæ“¾
-	 * @param name ƒtƒ@ƒCƒ‹–¼
-	 * @param fname ƒtƒ@ƒCƒ‹–¼‚ğ•Ô‚·
-	 * @return PSDî•ñ
+	 * ãƒ•ã‚¡ã‚¤ãƒ«åã«åˆè‡´ã—ãŸ PSD æƒ…å ±ã‚’å–å¾—
+	 * @param name ãƒ•ã‚¡ã‚¤ãƒ«å
+	 * @param fname ãƒ•ã‚¡ã‚¤ãƒ«åã‚’è¿”ã™
+	 * @return PSDæƒ…å ±
 	 */
 	PSD *getPSD(ttstr name, ttstr &fname) {
-		// ¬•¶š‚Å³‹K‰»
+		// å°æ–‡å­—ã§æ­£è¦åŒ–
 		name.ToLowerCase();
-		// ƒhƒƒCƒ“–¼‚Æ‚»‚êˆÈ~‚ğ•ª—£
+		// ãƒ‰ãƒ¡ã‚¤ãƒ³åã¨ãã‚Œä»¥é™ã‚’åˆ†é›¢
 		ttstr dname;
 		const tjs_char *p = name.c_str();
 		const tjs_char *q;
@@ -175,22 +175,22 @@ protected:
 
 		PSD *psd = 0;
 
-		// ’¼‹ß‚ÌƒLƒƒƒbƒVƒ…‚ª‡’v‚·‚éê‡‚Í‚»‚ê‚ğ•Ô‚·
+		// ç›´è¿‘ã®ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãŒåˆè‡´ã™ã‚‹å ´åˆã¯ãã‚Œã‚’è¿”ã™
 		if (cache.Type() == tvtObject &&
 				(psd = ncbInstanceAdaptor<PSD>::GetNativeInstance(cache.AsObjectNoAddRef())) &&
 				psd->dname == dname) {
 			return psd;
 		}
 
-		// PSDƒIƒuƒWƒFƒNƒg‚ÌãQÆ‚©‚ç’T‚·
+		// PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®å¼±å‚ç…§ã‹ã‚‰æ¢ã™
 		PSDMap::iterator it = psdMap.find(dname);
 		if (it != psdMap.end()) {
-			// Šù‘¶ƒf[ƒ^‚ª‚ ‚é
+			// æ—¢å­˜ãƒ‡ãƒ¼ã‚¿ãŒã‚ã‚‹
 			cache = it->second->getSelf();
 			return it->second;
 		}
 
-		// ©•ª‚Åopen‚µ‚Ä‚»‚Ì‚Ü‚ÜƒLƒƒƒbƒVƒ…‚Æ‚µ‚Ä‚Â
+		// è‡ªåˆ†ã§openã—ã¦ãã®ã¾ã¾ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã¨ã—ã¦æŒã¤
 		TVPExecuteExpression(L"new PSD()", &cache);
 		psd = ncbInstanceAdaptor<PSD>::GetNativeInstance(cache.AsObjectNoAddRef());
 		if (psd) {
@@ -205,23 +205,23 @@ protected:
 	}
 
 private:
-	tjs_uint refCount; //< ƒŠƒtƒ@ƒŒƒ“ƒXƒJƒEƒ“ƒg
+	tjs_uint refCount; //< ãƒªãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹ã‚«ã‚¦ãƒ³ãƒˆ
 
-	// PSDƒIƒuƒWƒFƒNƒg‚ÌƒLƒƒƒbƒVƒ…QÆ
+	// PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ã‚­ãƒ£ãƒƒã‚·ãƒ¥å‚ç…§
 	tTJSVariant cache;
 	
-	// PSDƒIƒuƒWƒFƒNƒg‚ÌãQÆ
+	// PSDã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®å¼±å‚ç…§
 	typedef std::map<ttstr, PSD*> PSDMap;
 	PSDMap psdMap;
 };
 
 static PSDStorage *psdStorage = 0;
 
-// ãQÆ’Ç‰Á
+// å¼±å‚ç…§è¿½åŠ 
 void
 PSD::addToStorage(const ttstr &filename)
 {
-	// “o˜^—pƒx[ƒX–¼‚ğ¶¬
+	// ç™»éŒ²ç”¨ãƒ™ãƒ¼ã‚¹åã‚’ç”Ÿæˆ
 	const tjs_char *p = filename.c_str();
 	const tjs_char *q;
 	if ((q = wcsrchr(p, '/'))) {
@@ -229,14 +229,14 @@ PSD::addToStorage(const ttstr &filename)
 	} else {
 		dname = filename;
 	}
-	// ¬•¶š‚Å³‹K‰»
+	// å°æ–‡å­—ã§æ­£è¦åŒ–
 	dname.ToLowerCase();
 	if (psdStorage != NULL) {
 		psdStorage->add(dname, this);
 	}
 }
 
-// ãQÆ‰ğœ
+// å¼±å‚ç…§è§£é™¤
 void
 PSD::removeFromStorage()
 {

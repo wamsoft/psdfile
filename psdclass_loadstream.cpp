@@ -5,7 +5,7 @@
 #include "psdparse/psdparse.h"
 
 /**
- * Stream —p‚Ì Iterator
+ * Stream ç”¨ã® Iterator
  */
 class PSDIterator : public std::iterator<std::random_access_iterator_tag, const unsigned char>
 {
@@ -17,23 +17,23 @@ public:
 	}
 
 	/**
-	 * ƒRƒ“ƒXƒgƒ‰ƒNƒ^
-	 * @param srream QÆƒXƒgƒŠ[ƒ€
-	 * @param begin true ‚È‚ç–`“ªAfalse ‚È‚ç––”ö
+	 * ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
+	 * @param srream å‚ç…§ã‚¹ãƒˆãƒªãƒ¼ãƒ 
+	 * @param begin true ãªã‚‰å†’é ­ã€false ãªã‚‰æœ«å°¾
 	 */
 	PSDIterator(PSD* psd, bool begin) : _psd(psd), _pos(0), _size(0) {
 		_size = psd->mStreamSize;
 		_pos = begin ? 0 : _size;
 	}
 
-	// ƒRƒs[ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	// ã‚³ãƒ”ãƒ¼ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	PSDIterator(const PSDIterator& o) {
 		_psd = o._psd;
 		_pos = o._pos;
 		_size = o._size;
 	}
 
-	// ‘ã“ü‰‰Zq
+	// ä»£å…¥æ¼”ç®—å­
 	PSDIterator &operator=(const PSDIterator &o) {
 		_psd  = o._psd;
 		_pos  = o._pos;
@@ -41,18 +41,18 @@ public:
 		return *this;
 	}
 	
-	// ƒfƒXƒgƒ‰ƒNƒ^
+	// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	virtual ~PSDIterator() {
 	}
 
-	// ƒCƒeƒŒ[ƒ^‚ği‚ß‚é(‘O’u)
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã‚’é€²ã‚ã‚‹(å‰ç½®)
 	PSDIterator& operator++() {
 		_pos++;
 		if (_pos > _size) _pos = _size;
 		return *this;
 	}
 
-	// ƒCƒeƒŒ[ƒ^‚ği‚ß‚éiŒã’u)
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã‚’é€²ã‚ã‚‹ï¼ˆå¾Œç½®)
 	PSDIterator operator++(int) {
 		PSDIterator ret = *this;
 		_pos++;
@@ -72,14 +72,14 @@ public:
 		return ret;
 	}
 	
-	// ƒCƒeƒŒ[ƒ^‚ğ–ß‚·(‘O’u)
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã‚’æˆ»ã™(å‰ç½®)
 	PSDIterator& operator--() {
 		_pos--;
 		if (_pos < 0) _pos = 0;
 		return *this;
 	}
 
-	// ƒCƒeƒŒ[ƒ^‚ğ–ß‚·iŒã’u)
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã‚’æˆ»ã™ï¼ˆå¾Œç½®)
 	PSDIterator operator--(int) {
 		PSDIterator ret = *this;
 		_pos--;
@@ -99,7 +99,7 @@ public:
 		return ret;
 	}
 
-	// “Ç‚İæ‚è
+	// èª­ã¿å–ã‚Š
 	const unsigned char& operator*() {
 		return _psd->getStreamValue(_pos);
 	}
@@ -109,16 +109,16 @@ public:
 		_pos += size;
 	}
 	
-	// ·•ª
+	// å·®åˆ†
 	diff_t operator-(const PSDIterator& b) const {
 		return (diff_t)(_pos - b._pos);
 	}
 	
-	// ƒCƒeƒŒ[ƒ^‚Ìˆê’v”»’è
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã®ä¸€è‡´åˆ¤å®š
 	bool operator==(const PSDIterator& o) const {
 		return o._pos == _pos;
 	}
-	// ƒCƒeƒŒ[ƒ^‚Ìˆê’v”»’è
+	// ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã®ä¸€è‡´åˆ¤å®š
 	bool operator!=(const PSDIterator& o) const {
 		return o._pos != _pos;
 	}
@@ -140,8 +140,8 @@ public:
 	
 private:
 	PSD *_psd;
-	tTVInteger _size; //< ƒXƒgƒŠ[ƒ€ƒTƒCƒY•Û—p
-	tTVInteger _pos;  //< QÆˆÊ’u
+	tTVInteger _size; //< ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚µã‚¤ã‚ºä¿æŒç”¨
+	tTVInteger _pos;  //< å‚ç…§ä½ç½®
 };
 
 namespace psd {
@@ -168,7 +168,7 @@ PSD::loadStream(const ttstr &filename)
 {
 	clearData();
 
-	// ƒXƒgƒŠ[ƒ€‚Ì‚Ü‚Ü
+	// ã‚¹ãƒˆãƒªãƒ¼ãƒ ã®ã¾ã¾
 	isLoaded = false;
 	pStream = TVPCreateIStream(filename, TJS_BS_READ);
 	if (pStream) {

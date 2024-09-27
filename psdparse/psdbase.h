@@ -28,7 +28,7 @@ namespace psd {
   typedef float  float32_t;
   typedef double float64_t;
 
-  // ƒrƒbƒgî•ñ‚ğˆÛ‚µ‚½Œ^•ÏŠ·—p‚Ìunion
+  // ãƒ“ãƒƒãƒˆæƒ…å ±ã‚’ç¶­æŒã—ãŸå‹å¤‰æ›ç”¨ã®union
   union pun32 {
     uint32_t  i;
     float32_t f;
@@ -38,7 +38,7 @@ namespace psd {
     float64_t f;
   };
 
-  // ƒCƒ[ƒWæ“¾‚ÉƒJƒ‰[”z’u‚ğw’è‚·‚é‚½‚ß‚ÌƒtƒH[ƒ}ƒbƒg\‘¢‘Ì
+  // ã‚¤ãƒ¡ãƒ¼ã‚¸å–å¾—æ™‚ã«ã‚«ãƒ©ãƒ¼é…ç½®ã‚’æŒ‡å®šã™ã‚‹ãŸã‚ã®ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆæ§‹é€ ä½“
   struct ColorFormat {
     ColorFormat(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     : rShift(r), gShift(g), bShift(b), aShift(a) {}
@@ -49,10 +49,10 @@ namespace psd {
     uint8_t aShift;
   };
 
-  // ƒfƒtƒHƒ‹ƒg‚ÌWindowsŒü‚¯BGRA(LittleEndian)ƒtƒH[ƒ}ƒbƒg
+  // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®Windowså‘ã‘BGRA(LittleEndian)ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ
   static const ColorFormat BGRA_LE(16, 8, 0, 24);
 
-  // ƒCƒeƒŒ[ƒ^QÆ—pŠî’êƒNƒ‰ƒX
+  // ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿å‚ç…§ç”¨åŸºåº•ã‚¯ãƒ©ã‚¹
 	class IteratorBase {
 	public:
 		IteratorBase() {};

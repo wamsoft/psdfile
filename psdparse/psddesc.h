@@ -9,10 +9,10 @@
 
 namespace psd {
   // --------------------------------------------------------------------------
-  // ’è”
+  // å®šæ•°
   // --------------------------------------------------------------------------
   
-  // ƒfƒBƒXƒNƒŠƒvƒ^ƒAƒCƒeƒ€ƒ^ƒCƒv
+  // ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿ã‚¢ã‚¤ãƒ†ãƒ ã‚¿ã‚¤ãƒ—
   enum DescriptorType {
     TYPE_REFERENCE      = 'obj ',
     TYPE_DESCRIPTOR     = 'Objc',
@@ -63,10 +63,10 @@ namespace psd {
   }
 
   // --------------------------------------------------------------------------
-  // ƒAƒCƒeƒ€Šî’ê
+  // ã‚¢ã‚¤ãƒ†ãƒ åŸºåº•
   // --------------------------------------------------------------------------
 
-  // ƒfƒBƒXƒNƒŠƒvƒ^ƒAƒCƒeƒ€Šî’ê
+  // ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿ã‚¢ã‚¤ãƒ†ãƒ åŸºåº•
   struct DescriptorItem {
     DescriptorItem(DescriptorType t) : type(t), isValid(true) {}
     virtual ~DescriptorItem() {}
@@ -98,7 +98,7 @@ namespace psd {
     DescriptorType     type;
   };
 
-  // ƒŠƒtƒ@ƒŒƒ“ƒXƒAƒCƒeƒ€Šî’ê
+  // ãƒªãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹ã‚¢ã‚¤ãƒ†ãƒ åŸºåº•
   struct ReferenceItem {
     ReferenceItem(ReferenceType t) : type(t) {}
     virtual ~ReferenceItem() {}
@@ -109,7 +109,7 @@ namespace psd {
   };
 
   // --------------------------------------------------------------------------
-  // ƒfƒBƒXƒNƒŠƒvƒ^
+  // ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿
   // --------------------------------------------------------------------------
 
   struct Descriptor;
@@ -125,7 +125,7 @@ namespace psd {
   struct DescriptorAlias;
   struct DescriptorRawData;
 
-  // ƒfƒBƒXƒNƒŠƒvƒ^(©g‚àƒfƒBƒXƒNƒŠƒvƒ^ƒAƒCƒeƒ€‚Æ‚È‚éƒP[ƒX‚ª‚ ‚é)
+  // ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿(è‡ªèº«ã‚‚ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿ã‚¢ã‚¤ãƒ†ãƒ ã¨ãªã‚‹ã‚±ãƒ¼ã‚¹ãŒã‚ã‚‹)
   struct Descriptor : DescriptorItem {
     typedef std::map<std::string, DescriptorItem*> ItemMap;
 
@@ -157,7 +157,7 @@ namespace psd {
       }
     }
 
-    // –ß‚è’lƒI[ƒo[ƒ[ƒh—p‚ÌƒNƒ‰ƒX
+    // æˆ»ã‚Šå€¤ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰ç”¨ã®ã‚¯ãƒ©ã‚¹
     struct _finder {
       _finder(const ItemMap& itemMap, const std::string key)
       : itemMap(itemMap), key(key) { }
@@ -230,7 +230,7 @@ namespace psd {
       return (int)items.size();
     }
 
-    // –ß‚è’lƒI[ƒo[ƒ[ƒh—p‚ÌƒNƒ‰ƒX
+    // æˆ»ã‚Šå€¤ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰ç”¨ã®ã‚¯ãƒ©ã‚¹
     struct _getter {
       _getter(const std::vector<DescriptorItem*>& items, int id)
       : items(items), id(id) { }
@@ -355,11 +355,11 @@ namespace psd {
       dprint("%s (val:%s)\n", typeName(), alias.c_str());
     }
 
-    // TODO string ‚Å‚¢‚¢‚©•s–¾(unicode‚Ì‰Â”\«‚àH)
+    // TODO string ã§ã„ã„ã‹ä¸æ˜(unicodeã®å¯èƒ½æ€§ã‚‚ï¼Ÿ)
     std::string alias;
   };
 
-  // Raw ‚Í’l‚Ì‰ğß‚ªƒf[ƒ^Ÿ‘æ‚ÅƒTƒCƒY‚ª‚í‚©‚ç‚È‚¢‚Ì‚Å¸”sˆµ‚¢‚É‚µ‚Ä‚¢‚é
+  // Raw ã¯å€¤ã®è§£é‡ˆãŒãƒ‡ãƒ¼ã‚¿æ¬¡ç¬¬ã§ã‚µã‚¤ã‚ºãŒã‚ã‹ã‚‰ãªã„ã®ã§å¤±æ•—æ‰±ã„ã«ã—ã¦ã„ã‚‹
   struct DescriptorRawData : DescriptorItem {
     DescriptorRawData(IteratorBase *data) : DescriptorItem(TYPE_RAW_DATA) {}
     virtual bool load(IteratorBase *data) { return false; }
@@ -369,7 +369,7 @@ namespace psd {
   };
 
   // --------------------------------------------------------------------------
-  // ƒŠƒtƒ@ƒŒƒ“ƒX
+  // ãƒªãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹
   // --------------------------------------------------------------------------
 
   struct ReferenceProperty : ReferenceItem {

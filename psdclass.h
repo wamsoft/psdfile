@@ -3,6 +3,8 @@
 
 //#define LOAD_MEMORY
 
+#include "stdafx.h"
+
 #include <tp_stub.h>
 #include "psdparse/psdfile.h"
 
@@ -16,34 +18,34 @@ class PSD : public psd::PSDFile
 	
 public:
 	/**
-	 * ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+	 * ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	 */
 	PSD(iTJSDispatch2 *objthis);
 
 	/**
-	 * ƒfƒXƒgƒ‰ƒNƒ^
+	 * ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	 */
 	~PSD();
 
 	/**
-	 * “à•ïƒf[ƒ^‚ÌÁ‹
+	 * å†…åŒ…ãƒ‡ãƒ¼ã‚¿ã®æ¶ˆå»
 	 */
 	virtual void clearData();
 	
 	/**
-	 * ƒCƒ“ƒXƒ^ƒ“ƒX¶¬ƒtƒ@ƒNƒgƒŠ
+	 * ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç”Ÿæˆãƒ•ã‚¡ã‚¯ãƒˆãƒª
 	 */
 	static tjs_error factory(PSD **result, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *objthis);
 
 	/**
-	 * ¶¬‚Ì©ŒÈƒIƒuƒWƒFƒNƒg‚ğæ“¾
+	 * ç”Ÿæˆæ™‚ã®è‡ªå·±ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å–å¾—
 	 */
 	tTJSVariant getSelf();
 	
 	/**
-	 * PSD‰æ‘œ‚Ìƒ[ƒh
-	 * @param filename ƒtƒ@ƒCƒ‹–¼
-	 * @return ƒ[ƒh‚É¬Œ÷‚µ‚½‚ç true
+	 * PSDç”»åƒã®ãƒ­ãƒ¼ãƒ‰
+	 * @param filename ãƒ•ã‚¡ã‚¤ãƒ«å
+	 * @return ãƒ­ãƒ¼ãƒ‰ã«æˆåŠŸã—ãŸã‚‰ true
 	 */
 	bool load(ttstr filename);
 
@@ -60,93 +62,93 @@ public:
 
 public:
 	/**
-	 * ƒŒƒCƒ„í•Ê‚Ìæ“¾
-	 * @param no ƒŒƒCƒ„”Ô†
-	 * @return ƒŒƒCƒ„í•Ê
+	 * ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥ã®å–å¾—
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+	 * @return ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥
 	 */
 	int getLayerType(int no);
 
 	/**
-	 * ƒŒƒCƒ„–¼Ì‚Ìæ“¾
-	 * @param no ƒŒƒCƒ„”Ô†
-	 * @return ƒŒƒCƒ„í•Ê
+	 * ãƒ¬ã‚¤ãƒ¤åç§°ã®å–å¾—
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+	 * @return ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥
 	 */
 	ttstr getLayerName(int no);
 
 	/**
-	 * ƒŒƒCƒ„î•ñ‚Ìæ“¾
-	 * @param no ƒŒƒCƒ„”Ô†
-	 * @return ƒŒƒCƒ„î•ñ‚ªŠi”[‚³‚ê‚½«‘
+	 * ãƒ¬ã‚¤ãƒ¤æƒ…å ±ã®å–å¾—
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+	 * @return ãƒ¬ã‚¤ãƒ¤æƒ…å ±ãŒæ ¼ç´ã•ã‚ŒãŸè¾æ›¸
 	 */
 	tTJSVariant getLayerInfo(int no);
 
 	/**
-	 * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(“à•”ˆ—)
-	 * @param layer “Ç‚İo‚µæƒŒƒCƒ„
-	 * @param no ƒŒƒCƒ„”Ô†
-     * @param imageMode ƒCƒ[ƒWƒ‚[ƒh
+	 * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(å†…éƒ¨å‡¦ç†)
+	 * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+     * @param imageMode ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒ¢ãƒ¼ãƒ‰
 	 */
   void _getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode);
 
 	/**
-	 * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ
-	 * @param layer “Ç‚İo‚µæƒŒƒCƒ„
-	 * @param no ƒŒƒCƒ„”Ô†
+	 * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+	 * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
 	 */
 	void getLayerData(tTJSVariant layer, int no);
 
 	/**
-	 * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(¶ƒCƒ[ƒW)
-	 * @param layer “Ç‚İo‚µæƒŒƒCƒ„
-	 * @param no ƒŒƒCƒ„”Ô†
+	 * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(ç”Ÿã‚¤ãƒ¡ãƒ¼ã‚¸)
+	 * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
 	 */
 	void getLayerDataRaw(tTJSVariant layer, int no);
 
 	/**
-	 * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(ƒ}ƒXƒN‚Ì‚İ)
-	 * @param layer “Ç‚İo‚µæƒŒƒCƒ„
-	 * @param no ƒŒƒCƒ„”Ô†
+	 * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(ãƒã‚¹ã‚¯ã®ã¿)
+	 * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
 	 */
 	void getLayerDataMask(tTJSVariant layer, int no);
 
 	/**
-	 * ƒXƒ‰ƒCƒXƒf[ƒ^‚Ì“Ç‚İo‚µ
-	 * @return ƒXƒ‰ƒCƒXî•ñ«‘ %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
-	 *         ƒXƒ‰ƒCƒXî•ñ‚ª‚È‚¢ê‡‚Í void ‚ğ•Ô‚·
+	 * ã‚¹ãƒ©ã‚¤ã‚¹ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+	 * @return ã‚¹ãƒ©ã‚¤ã‚¹æƒ…å ±è¾æ›¸ %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
+	 *         ã‚¹ãƒ©ã‚¤ã‚¹æƒ…å ±ãŒãªã„å ´åˆã¯ void ã‚’è¿”ã™
 	 */
 	tTJSVariant getSlices();
 
 	/**
-	 * ƒKƒCƒhƒf[ƒ^‚Ì“Ç‚İo‚µ
-	 * @return ƒKƒCƒhî•ñ«‘ %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
-	 *         ƒKƒCƒhî•ñ‚ª‚È‚¢ê‡‚Í void ‚ğ•Ô‚·
+	 * ã‚¬ã‚¤ãƒ‰ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+	 * @return ã‚¬ã‚¤ãƒ‰æƒ…å ±è¾æ›¸ %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
+	 *         ã‚¬ã‚¤ãƒ‰æƒ…å ±ãŒãªã„å ´åˆã¯ void ã‚’è¿”ã™
 	 */
 	tTJSVariant getGuides();
 
 	/**
-	 * ‡¬Œ‹‰Ê‚Ìæ“¾Bæ“¾—Ìˆæ‚Í‰æ‘œ‘S‘ÌƒTƒCƒY“à‚É‚¨‚³‚Ü‚Á‚Ä‚é•K—v‚ª‚ ‚è‚Ü‚·
-   * ’ˆÓFPSDƒtƒ@ƒCƒ‹©‘Ì‚É‡¬Ï‚İ‰æ‘œ‚ª‘¶İ‚µ‚È‚¢ê‡‚Íæ“¾‚É¸”s‚µ‚Ü‚·
+	 * åˆæˆçµæœã®å–å¾—ã€‚å–å¾—é ˜åŸŸã¯ç”»åƒå…¨ä½“ã‚µã‚¤ã‚ºå†…ã«ãŠã•ã¾ã£ã¦ã‚‹å¿…è¦ãŒã‚ã‚Šã¾ã™
+   * æ³¨æ„ï¼šPSDãƒ•ã‚¡ã‚¤ãƒ«è‡ªä½“ã«åˆæˆæ¸ˆã¿ç”»åƒãŒå­˜åœ¨ã—ãªã„å ´åˆã¯å–å¾—ã«å¤±æ•—ã—ã¾ã™
    *
-	 * @param layer Ši”[æƒŒƒCƒ„(width,heightƒTƒCƒY‚É’²®‚³‚ê‚é)
-	 * @return æ“¾‚É¬Œ÷‚µ‚½‚ç true
+	 * @param layer æ ¼ç´å…ˆãƒ¬ã‚¤ãƒ¤(width,heightã‚µã‚¤ã‚ºã«èª¿æ•´ã•ã‚Œã‚‹)
+	 * @return å–å¾—ã«æˆåŠŸã—ãŸã‚‰ true
 	 */
   bool getBlend(tTJSVariant layer);
 
 	/**
-	 * ƒŒƒCƒ„[ƒJƒ“ƒv
+	 * ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
 	 */
 	tTJSVariant getLayerComp();
 
 protected:
-	iTJSDispatch2 *objthis; ///< ©ŒÈƒIƒuƒWƒFƒNƒgî•ñ‚ÌQÆ
-	ttstr dname; ///< “o˜^—pƒx[ƒX–¼
+	iTJSDispatch2 *objthis; ///< è‡ªå·±ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆæƒ…å ±ã®å‚ç…§
+	ttstr dname; ///< ç™»éŒ²ç”¨ãƒ™ãƒ¼ã‚¹å
 
 #ifdef LOAD_MEMORY
-	HGLOBAL hBuffer; // ƒIƒ“ƒƒ‚ƒŠ•Û—pƒnƒ“ƒhƒ‹
+	HGLOBAL hBuffer; // ã‚ªãƒ³ãƒ¡ãƒ¢ãƒªä¿æŒç”¨ãƒãƒ³ãƒ‰ãƒ«
 	bool loadMemory(const ttstr &filename);
 	void clearMemory();
 #else
-	// ƒXƒgƒŠ[ƒ€‚©‚ç“Ç‚İ‚İ
+	// ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‹ã‚‰èª­ã¿è¾¼ã¿
 	IStream *pStream;
 	tTVInteger mStreamSize;
 	bool loadStream(const ttstr &filename);
@@ -154,73 +156,73 @@ protected:
 	unsigned char &getStreamValue(const tTVInteger &pos);
 	void copyToBuffer(uint8_t *buf, tTVInteger pos, int size);
 
-	//< PSDƒtƒ@ƒCƒ‹“Ç‚İ‚İƒLƒƒƒbƒVƒ…—pƒoƒbƒtƒ@
+	//< PSDãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ã‚­ãƒ£ãƒƒã‚·ãƒ¥ç”¨ãƒãƒƒãƒ•ã‚¡
 	tTVInteger mBufferPos;
 	ULONG mBufferSize;
 	unsigned char mBuffer[4*1024];
 #endif
 	
 	/**
-	 * ƒŒƒCƒ„”Ô†‚ª“KØ‚©‚Ç‚¤‚©”»’è
-	 * @param no ƒŒƒCƒ„”Ô†
+	 * ãƒ¬ã‚¤ãƒ¤ç•ªå·ãŒé©åˆ‡ã‹ã©ã†ã‹åˆ¤å®š
+	 * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
 	 */
 	void checkLayerNo(int no);
 
 	/**
-	 * –¼‘O‚Ìæ“¾
-	 * @param layƒŒƒCƒ„î•ñ
+	 * åå‰ã®å–å¾—
+	 * @param layãƒ¬ã‚¤ãƒ¤æƒ…å ±
 	 */
 	static ttstr layname(psd::LayerInfo &lay);
 	
 	// ------------------------------------------------------------
-	// ƒXƒgƒŒ[ƒWƒŒƒCƒ„QÆ—pƒCƒ“ƒ^[ƒtƒF[ƒX
+	// ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ãƒ¬ã‚¤ãƒ¤å‚ç…§ç”¨ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹
 	// ------------------------------------------------------------
 	
 protected:
 
-	// ƒXƒgƒŒ[ƒWî•ñ“o˜^
+	// ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸æƒ…å ±ç™»éŒ²
 	void addToStorage(const ttstr &filename);
 	void removeFromStorage();
 
-	bool storageStarted; //< ƒXƒgƒŒ[ƒW—p‚Ìî•ñ‰Šú‰»Ï‚İƒtƒ‰ƒO
+	bool storageStarted; //< ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ç”¨ã®æƒ…å ±åˆæœŸåŒ–æ¸ˆã¿ãƒ•ãƒ©ã‚°
 
-	// ƒŒƒCƒ„–¼‚ğ•Ô‚·
+	// ãƒ¬ã‚¤ãƒ¤åã‚’è¿”ã™
 	static ttstr path_layname(psd::LayerInfo &lay);
 
-	// ƒŒƒCƒ„‚ÌƒpƒX–¼‚ğ•Ô‚·
+	// ãƒ¬ã‚¤ãƒ¤ã®ãƒ‘ã‚¹åã‚’è¿”ã™
 	static ttstr pathname(psd::LayerInfo &lay);
 
-	// ƒXƒgƒŒ[ƒWˆ——pƒf[ƒ^‚Ì‰Šú‰»
+	// ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸å‡¦ç†ç”¨ãƒ‡ãƒ¼ã‚¿ã®åˆæœŸåŒ–
 	void startStorage();
 
 	/*
-	 * w’è‚µ‚½–¼‘O‚ÌƒŒƒCƒ„‚Ì‘¶İƒ`ƒFƒbƒN
-	 * @param name ƒpƒX‚ğŠÜ‚ŞƒŒƒCƒ„–¼
-	 * @param layerIdxRet ƒŒƒCƒ„ƒCƒ“ƒfƒbƒNƒX”Ô†‚ğ•Ô‚·
+	 * æŒ‡å®šã—ãŸåå‰ã®ãƒ¬ã‚¤ãƒ¤ã®å­˜åœ¨ãƒã‚§ãƒƒã‚¯
+	 * @param name ãƒ‘ã‚¹ã‚’å«ã‚€ãƒ¬ã‚¤ãƒ¤å
+	 * @param layerIdxRet ãƒ¬ã‚¤ãƒ¤ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ç•ªå·ã‚’è¿”ã™
 	 */
 	bool CheckExistentStorage(const ttstr &filename, int *layerIdxRet=0);
 
 	/*
-	 * w’è‚µ‚½ƒpƒX‚É‚ ‚éƒtƒ@ƒCƒ‹–¼ˆê——‚Ìæ“¾
-	 * @param pathname ƒpƒX–¼
-	 * @param lister ƒŠƒXƒgæ“¾—pƒCƒ“ƒ^[ƒtƒF[ƒX
+	 * æŒ‡å®šã—ãŸãƒ‘ã‚¹ã«ã‚ã‚‹ãƒ•ã‚¡ã‚¤ãƒ«åä¸€è¦§ã®å–å¾—
+	 * @param pathname ãƒ‘ã‚¹å
+	 * @param lister ãƒªã‚¹ãƒˆå–å¾—ç”¨ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹
 	 */
 	void GetListAt(const ttstr &pathname, iTVPStorageLister *lister);
 
 	/*
-	 * w’è‚µ‚½–¼‘O‚ÌƒŒƒCƒ„‚Ì‰æ‘œƒtƒ@ƒCƒ‹‚ğƒXƒgƒŠ[ƒ€‚Å•Ô‚·
-	 * @param name ƒpƒX‚ğŠÜ‚ŞƒŒƒCƒ„–¼
-	 * @return ƒtƒ@ƒCƒ‹ƒXƒgƒŠ[ƒ€
+	 * æŒ‡å®šã—ãŸåå‰ã®ãƒ¬ã‚¤ãƒ¤ã®ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚¹ãƒˆãƒªãƒ¼ãƒ ã§è¿”ã™
+	 * @param name ãƒ‘ã‚¹ã‚’å«ã‚€ãƒ¬ã‚¤ãƒ¤å
+	 * @return ãƒ•ã‚¡ã‚¤ãƒ«ã‚¹ãƒˆãƒªãƒ¼ãƒ 
 	 */
 	IStream *openLayerImage(const ttstr &name);
 	
-	// ƒpƒX–¼‹L˜^—p
+	// ãƒ‘ã‚¹åè¨˜éŒ²ç”¨
 
-	typedef std::map<int,int> LayerIdIdxMap; // layerId ‚ÆƒŒƒCƒ„î•ñƒCƒ“ƒfƒbƒNƒX‚Ìƒ}ƒbƒv
+	typedef std::map<int,int> LayerIdIdxMap; // layerId ã¨ãƒ¬ã‚¤ãƒ¤æƒ…å ±ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã®ãƒãƒƒãƒ—
 	LayerIdIdxMap layerIdIdxMap;
 
-	typedef std::map<ttstr,int> NameIdxMap;     //< ƒŒƒCƒ„–¼‚ÆlayerId ‚Ìƒ}ƒbƒv
-	typedef std::map<ttstr,NameIdxMap> PathMap; //< ƒpƒX•Ê‚ÌƒŒƒCƒ„–¼ˆê——
+	typedef std::map<ttstr,int> NameIdxMap;     //< ãƒ¬ã‚¤ãƒ¤åã¨layerId ã®ãƒãƒƒãƒ—
+	typedef std::map<ttstr,NameIdxMap> PathMap; //< ãƒ‘ã‚¹åˆ¥ã®ãƒ¬ã‚¤ãƒ¤åä¸€è¦§
 	PathMap pathMap;
 };
 

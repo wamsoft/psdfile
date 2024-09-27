@@ -4,7 +4,10 @@
 
 #define USE_ZLIB
 #ifdef USE_ZLIB
-#define ZLIB_WINAPI
+
+// vcpkgç’°å¢ƒã®zlibã§ã¯ã‚ªãƒ³ã«ã™ã‚‹ã¨ãƒªãƒ³ã‚¯ã‚¨ãƒ©ãƒ¼ã«ãªã‚‹
+// #define ZLIB_WINAPI
+
 #define NOMINMAX
 #include <zlib.h>
 #endif
@@ -22,15 +25,15 @@ namespace psd {
   static const uint32_t  OPAQ_INT_BE = byteSwap32(*(uint32_t*)&(OPAQ_F32));
 
   // --------------------------------------------------------------------------
-  // ƒ`ƒƒƒlƒ‹ƒRƒ“ƒ|[ƒlƒ“ƒgƒpƒbƒN
+  // ãƒãƒ£ãƒãƒ«ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆãƒ‘ãƒƒã‚¯
   // --------------------------------------------------------------------------
 
-  // ƒRƒ“ƒ|[ƒlƒ“ƒgƒJƒ‰[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
+  // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚«ãƒ©ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
   template <typename T>
   inline uint32_t
   rgbaCompoToRgba32(const ColorFormat &fmt, T r, T g, T b, T a)
   {
-    // ’l‚ÍBigEndian
+    // å€¤ã¯BigEndian
 #ifdef BOOST_LITTLE_ENDIAN
     return (uint32_t)(((a&0xff) << fmt.aShift) | ((r&0xff) << fmt.rShift) |
                       ((g&0xff) << fmt.gShift) | ((b&0xff) << fmt.bShift));
@@ -42,7 +45,7 @@ namespace psd {
 #endif
   }
 
-  // ƒRƒ“ƒ|[ƒlƒ“ƒgƒJƒ‰[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
+  // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚«ãƒ©ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
   template <typename T>
   inline uint32_t
   rgbaCompoToRgba32(const ColorFormat &fmt, T r, T g, T b)
@@ -50,8 +53,8 @@ namespace psd {
     return rgbaCompoToRgba32<T>(fmt, r, g, b, (T)(-1));
   }
 
-  // ƒRƒ“ƒ|[ƒlƒ“ƒgƒJƒ‰[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚«ãƒ©ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template<>
   inline uint32_t
   rgbaCompoToRgba32<uint32_t>(const ColorFormat &fmt,
@@ -75,8 +78,8 @@ namespace psd {
                       ((uint32_t)(b.f*255) << fmt.bShift));
   }
 
-  // ƒRƒ“ƒ|[ƒlƒ“ƒgƒJƒ‰[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã‚«ãƒ©ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template<>
   inline uint32_t
   rgbaCompoToRgba32<uint32_t>(const ColorFormat &fmt,
@@ -85,7 +88,7 @@ namespace psd {
     return rgbaCompoToRgba32<uint32_t>(fmt, r, g, b, OPAQ_INT_BE);
   }
 
-  // ƒOƒŒ[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
+  // ã‚°ãƒ¬ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
   template <typename T>
   inline uint32_t
   grayToRgba32(const ColorFormat &fmt, T g, T a)
@@ -102,7 +105,7 @@ namespace psd {
 #endif
   }
 
-  // ƒOƒŒ[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
+  // ã‚°ãƒ¬ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
   template <typename T>
   inline uint32_t
   grayToRgba32(const ColorFormat &fmt, T g)
@@ -110,8 +113,8 @@ namespace psd {
     return grayToRgba32<T>(fmt, g, (T)(-1));
   }
 
-  // ƒOƒŒ[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // ã‚°ãƒ¬ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template<>
   inline uint32_t
   grayToRgba32<uint32_t>(const ColorFormat &fmt, uint32_t _g, uint32_t _a)
@@ -131,8 +134,8 @@ namespace psd {
                       (gInt << fmt.bShift));
   }
 
-  // ƒOƒŒ[‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // ã‚°ãƒ¬ãƒ¼ã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template <>
   inline uint32_t
   grayToRgba32<uint32_t>(const ColorFormat &fmt, uint32_t g)
@@ -140,7 +143,7 @@ namespace psd {
     return grayToRgba32<uint32_t>(fmt, g, OPAQ_INT_BE);
   }
 
-  // CMYK‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
+  // CMYKã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
   template <typename T>
   inline uint32_t
   cmykCompoToRgba32(const ColorFormat &fmt, T _c, T _m, T _y, T _k, T _a)
@@ -167,7 +170,7 @@ namespace psd {
     return rgbaCompoToRgba32<uint8_t>(fmt, r, g, b, a);
   }
 
-  // CMYK‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
+  // CMYKã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
   template <typename T>
   inline uint32_t
   cmykCompoToRgba32(const ColorFormat &fmt, T c, T m, T y, T k)
@@ -175,9 +178,9 @@ namespace psd {
     return cmykCompoToRgba32<T>(fmt, c, m, y, k, (T)(-1));
   }
 
-  // MEMO CS5‚Ü‚Å‚Å‚Í32bit/ch‚ÌCMYKƒf[ƒ^‚Í‘¶İ‚µ‚È‚¢
-  // CMYK‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // MEMO CS5ã¾ã§ã§ã¯32bit/chã®CMYKãƒ‡ãƒ¼ã‚¿ã¯å­˜åœ¨ã—ãªã„
+  // CMYKã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template <>
   inline uint32_t
   cmykCompoToRgba32<uint32_t>(const ColorFormat &fmt,
@@ -205,8 +208,8 @@ namespace psd {
     return rgbaCompoToRgba32<uint8_t>(fmt, r, g, b, (uint8_t)(a.f * 255));
   }
 
-  // CMYK‚ğ32bitRGBA‚ÉƒpƒbƒN‚·‚é(Aƒ`ƒƒƒlƒ‹•s“§–¾)
-  //   32bit ƒRƒ“ƒ|[ƒlƒ“ƒg‚Í•‚“®¬”“_‚È‚Ì‚Å“Áê‰»‚Å‘Î‰
+  // CMYKã‚’32bitRGBAã«ãƒ‘ãƒƒã‚¯ã™ã‚‹(Aãƒãƒ£ãƒãƒ«ä¸é€æ˜)
+  //   32bit ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã¯æµ®å‹•å°æ•°ç‚¹ãªã®ã§ç‰¹æ®ŠåŒ–ã§å¯¾å¿œ
   template <>
   inline uint32_t
   cmykCompoToRgba32<uint32_t>(const ColorFormat &fmt,
@@ -216,10 +219,10 @@ namespace psd {
   }
   
   // --------------------------------------------------------------------------
-  // ƒ`ƒƒƒlƒ‹ƒ}[ƒW
+  // ãƒãƒ£ãƒãƒ«ãƒãƒ¼ã‚¸
   // --------------------------------------------------------------------------
 
-  // 1bit bitmap ‚ğ“‡‚µ pitch byte ’PˆÊ‚Å merged ‚ÉƒtƒBƒ‹‚·‚é
+  // 1bit bitmap ã‚’çµ±åˆã— pitch byte å˜ä½ã§ merged ã«ãƒ•ã‚£ãƒ«ã™ã‚‹
   void mergeChannelsBitmap(void *merged, int width, int height,
                            uint8_t *src, const ColorFormat &format, int bufPitchByte)
   {
@@ -252,7 +255,7 @@ namespace psd {
     }
   }
 
-  // ƒOƒŒƒCƒ`ƒƒƒlƒ‹‚ğ“‡‚µ pitch byte ’PˆÊ‚Å merged ‚ÉƒtƒBƒ‹‚·‚é
+  // ã‚°ãƒ¬ã‚¤ãƒãƒ£ãƒãƒ«ã‚’çµ±åˆã— pitch byte å˜ä½ã§ merged ã«ãƒ•ã‚£ãƒ«ã™ã‚‹
   template <typename T>
   void mergeChannelsGray(void *merged, int width, int height,
                          std::vector<int> &ids,
@@ -290,7 +293,7 @@ namespace psd {
     }
   }
 
-  // ƒCƒ“ƒfƒbƒNƒXƒJƒ‰[‚ğ“‡‚µ pitch byte ’PˆÊ‚Å merged ‚ÉƒtƒBƒ‹‚·‚é
+  // ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚«ãƒ©ãƒ¼ã‚’çµ±åˆã— pitch byte å˜ä½ã§ merged ã«ãƒ•ã‚£ãƒ«ã™ã‚‹
   void mergeChannelsIndex(void *merged, int width, int height,
                           uint8_t *src, ColorTable &table,
                           const ColorFormat &format, int bufPitchByte)
@@ -308,7 +311,7 @@ namespace psd {
     }
   }  
 
-  // RGBƒ`ƒƒƒlƒ‹‚ğ“‡‚µ pitch byte ’PˆÊ‚Å merged ‚ÉƒtƒBƒ‹‚·‚é
+  // RGBãƒãƒ£ãƒãƒ«ã‚’çµ±åˆã— pitch byte å˜ä½ã§ merged ã«ãƒ•ã‚£ãƒ«ã™ã‚‹
   template <typename T>
   void mergeChannelsRgb(void *merged, int width, int height,
                         std::vector<int> &ids, std::vector<uint8_t*> &decodedChannels,
@@ -351,7 +354,7 @@ namespace psd {
     }
   }
 
-  // CMYKƒ`ƒƒƒlƒ‹‚ğ“‡‚µ pitch byte ’PˆÊ‚Å merged ‚ÉƒtƒBƒ‹‚·‚é
+  // CMYKãƒãƒ£ãƒãƒ«ã‚’çµ±åˆã— pitch byte å˜ä½ã§ merged ã«ãƒ•ã‚£ãƒ«ã™ã‚‹
   template <typename T>
   void mergeChannelsCmyk(void *merged, int width, int height,
                          std::vector<int> &ids,
@@ -398,7 +401,7 @@ namespace psd {
     }
   }
 
-  // ƒAƒ‹ƒtƒ@ƒ`ƒƒƒlƒ‹‚Éƒ}ƒXƒNƒ`ƒƒƒlƒ‹‚ğƒ}[ƒW
+  // ã‚¢ãƒ«ãƒ•ã‚¡ãƒãƒ£ãƒãƒ«ã«ãƒã‚¹ã‚¯ãƒãƒ£ãƒãƒ«ã‚’ãƒãƒ¼ã‚¸
   template <typename T>
   void
   mergeMaskToAlpha(uint8_t *aCh, int al, int at, int ar, int ab,
@@ -410,13 +413,13 @@ namespace psd {
     int aPitch = aw * sizeof(T);
     int mPitch = mw * sizeof(T);
 
-    // ƒ}[ƒW—Ìˆæ‚ğˆ—
-    // alpha‚Æmask‚Ìd‚È‚è—Ìˆæ
+    // ãƒãƒ¼ã‚¸é ˜åŸŸã‚’å‡¦ç†
+    // alphaã¨maskã®é‡ãªã‚Šé ˜åŸŸ
     int l = std::max(al, ml); int t = std::max(at, mt);
     int r = std::min(ar, mr); int b = std::min(ab, mb);
     int w = r - l; int h = b - t;
     if (w > 0 && h > 0) {
-      // mask‚ğalpha‚Éƒ}[ƒW
+      // maskã‚’alphaã«ãƒãƒ¼ã‚¸
       int aOffsetX = l - al; int aOffsetY = t - at;
       int mOffsetX = l - ml; int mOffsetY = t - mt;
       static float f = 1.0f / ((1LL << (sizeof(T) * 8)) - 1);
@@ -429,21 +432,21 @@ namespace psd {
         }
       }
     } else {
-      // alpha‚Æmask‚Ìd‚È‚è‚ª‚È‚¢‚Ì‚Å‚±‚±‚ÅI‚í‚è
+      // alphaã¨maskã®é‡ãªã‚ŠãŒãªã„ã®ã§ã“ã“ã§çµ‚ã‚ã‚Š
       if (defaultColor == 0) {
         memset(aCh, 0x0, aw * ah * sizeof(T));
       }
       return;
     }
 
-    // ƒfƒtƒHƒ‹ƒgƒJƒ‰[‚ª0xff‚Ìê‡‚ÍAƒ}[ƒW—ÌˆæŠO‚Í
-    // ƒ¿ƒ`ƒƒƒlƒ‹‚Ì’l‚»‚Ì‚Ü‚Ü‚É‚È‚é‚Ì‚ÅA‰½‚à‚µ‚È‚¢‚Å–ß‚é
+    // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã‚«ãƒ©ãƒ¼ãŒ0xffã®å ´åˆã¯ã€ãƒãƒ¼ã‚¸é ˜åŸŸå¤–ã¯
+    // Î±ãƒãƒ£ãƒãƒ«ã®å€¤ãã®ã¾ã¾ã«ãªã‚‹ã®ã§ã€ä½•ã‚‚ã—ãªã„ã§æˆ»ã‚‹
     if (defaultColor != 0) {
       return;
     }
 
-    // ƒ}[ƒW‘ÎÛŠO‚Ì—Ìˆæ‚ğˆ—
-    // ƒ¿ƒ`ƒƒƒlƒ‹—Ìˆæ‚ğƒ}[ƒW”ÍˆÍ‚ÌÀ•W‚Å9ŒÂ‚Ì‹éŒ`‚É•ªŠ„
+    // ãƒãƒ¼ã‚¸å¯¾è±¡å¤–ã®é ˜åŸŸã‚’å‡¦ç†
+    // Î±ãƒãƒ£ãƒãƒ«é ˜åŸŸã‚’ãƒãƒ¼ã‚¸ç¯„å›²ã®åº§æ¨™ã§9å€‹ã®çŸ©å½¢ã«åˆ†å‰²
     struct rectangle {
       int w, h, l, t, r, b;
       rectangle() : w(0), h(0), l(0), t(0), r(0), b(0) {}
@@ -454,7 +457,7 @@ namespace psd {
       void invalidate() { w = h = 0; }
     } rect[3][3];
     
-    // À•W‚ğƒ¿ƒ`ƒƒƒlƒ‹—Ìˆæ‘Š‘Î‚É•ÏŠ·
+    // åº§æ¨™ã‚’Î±ãƒãƒ£ãƒãƒ«é ˜åŸŸç›¸å¯¾ã«å¤‰æ›
     ml = std::max(0,  ml - al); mt = std::max(0,  mt - at);
     mr = std::min(aw, mr - al); mb = std::min(ah, mb - at);
     al = 0;  at = 0;
@@ -464,13 +467,13 @@ namespace psd {
     rect[0][1].set(ml, at, mr, mt);
     rect[0][2].set(mr, at, ar, mt);
     rect[1][0].set(al, mt, ml, mb);
-    rect[1][1].invalidate(); // ƒ}[ƒW‘ÎÛ‚È‚Ì‚Åinvalid‚Ì‚Ü‚Üc‚µ‚Ä–³‹
+    rect[1][1].invalidate(); // ãƒãƒ¼ã‚¸å¯¾è±¡ãªã®ã§invalidã®ã¾ã¾æ®‹ã—ã¦ç„¡è¦–
     rect[1][2].set(mr, mt, ar, mb);
     rect[2][0].set(al, mb, ml, ab);
     rect[2][1].set(ml, mb, mr, ab);
     rect[2][2].set(mr, mb, ar, ab);
   
-    // “¯‚¶s‚Ì‹éŒ`—Ìˆæ‚ğŒ‹‡
+    // åŒã˜è¡Œã®çŸ©å½¢é ˜åŸŸã‚’çµåˆ
     bool lineCombined[3] = { true, true, true };
     for (int y = 0; y < 3; y++) {
       for (int x = 1; x >= 0; x--) {
@@ -484,15 +487,15 @@ namespace psd {
       }
     }
 
-    // ƒ}[ƒW‘ÎÛˆÈŠO‚ğƒPƒA
+    // ãƒãƒ¼ã‚¸å¯¾è±¡ä»¥å¤–ã‚’ã‚±ã‚¢
     for (int y = 0; y < 3; y++) {
       if (lineCombined[y]) {
-        // sŒ‹‡ó‘Ô‚È‚çmemset‚Å—ÌˆæˆêŠ‡ƒZƒbƒg
+        // è¡ŒçµåˆçŠ¶æ…‹ãªã‚‰memsetã§é ˜åŸŸä¸€æ‹¬ã‚»ãƒƒãƒˆ
         rectangle &r = rect[y][0];
         uint8_t *out = aCh + r.t * aPitch;
         memset(out, 0x0, r.h * aPitch);
       } else {
-        // sŒ‹‡Ï‚Å‚È‚¯‚ê‚ÎŒÂ•Ê‚Éƒ‰ƒCƒ“’PˆÊˆ—
+        // è¡Œçµåˆæ¸ˆã§ãªã‘ã‚Œã°å€‹åˆ¥ã«ãƒ©ã‚¤ãƒ³å˜ä½å‡¦ç†
         for (int x = 0; x < 3; x++) {
           rectangle &r = rect[y][x];
           if (r.valid()) {
@@ -507,10 +510,10 @@ namespace psd {
   }
 
   // --------------------------------------------------------------------------
-  // ˆ³k“WŠJ
+  // åœ§ç¸®å±•é–‹
   // --------------------------------------------------------------------------
 
-  // RLEˆ³k(PackBits)‚ğ“WŠJ‚·‚é
+  // RLEåœ§ç¸®(PackBits)ã‚’å±•é–‹ã™ã‚‹
   inline uint32_t decodePackBits(uint8_t *dst, uint8_t *src, int height,
                                  int channels=1, int targetCh=0, int lineDataOffset=0)
   {
@@ -530,13 +533,13 @@ namespace psd {
         uint8_t length = *lineData++;
         x++;
         if (length > 128) {
-          // ƒ‰ƒ“ƒŒƒ“ƒOƒX•ª“¯’lƒRƒs[
+          // ãƒ©ãƒ³ãƒ¬ãƒ³ã‚°ã‚¹åˆ†åŒå€¤ã‚³ãƒ”ãƒ¼
           length = (~length + 1) + 1;
           memset(decoded, *lineData, length);
           lineData++;
           x++;
         } else if (length < 128) {
-          // ƒ‰ƒ“‚ª‚È‚¢‚Ì‚Åƒxƒ^ƒRƒs[
+          // ãƒ©ãƒ³ãŒãªã„ã®ã§ãƒ™ã‚¿ã‚³ãƒ”ãƒ¼
           length = length + 1;
           memcpy(decoded, lineData, length);
           lineData += length;
@@ -551,7 +554,7 @@ namespace psd {
   }
 
 #ifdef USE_ZLIB
-  // prediction ‚È‚µ‚Ìunzip“WŠJ
+  // prediction ãªã—ã®unzipå±•é–‹
   bool decodeZipWithoutPrediction(void *dst, int dstSize, void *src, int srcSize)
   {
     z_stream zs;
@@ -582,7 +585,7 @@ namespace psd {
     return (ret == Z_STREAM_END);
   }
 
-  // prediction ‚Â‚« zip
+  // prediction ã¤ã zip
   bool decodeZipWithPrediction(void *dst, int dstSize, void *src, int srcSize,
                                 int width, int height, int depth)
   {
@@ -618,8 +621,8 @@ namespace psd {
       uint8_t *ptrData = (uint8_t *)buf;
       for (int i = 0; i < height; i++) {
 #ifdef BOOST_LITTLE_ENDIAN
-        // Œã‚Ìƒ`ƒƒƒ“ƒlƒ‹ƒ}[ƒW‚É big endian ‚Æ‚µ‚Äæ‚èˆµ‚¤‚Ì‚Å
-        // ‚±‚±‚Å‚ÍƒoƒCƒgƒXƒƒbƒv‚¹‚¸‚É be ‚Ì‚Ü‚ÜƒoƒCƒg’PˆÊ‚ÌŒvZ‚ğs‚¤
+        // å¾Œã®ãƒãƒ£ãƒ³ãƒãƒ«ãƒãƒ¼ã‚¸æ™‚ã« big endian ã¨ã—ã¦å–ã‚Šæ‰±ã†ã®ã§
+        // ã“ã“ã§ã¯ãƒã‚¤ãƒˆã‚¹ãƒ¯ãƒƒãƒ—ã›ãšã« be ã®ã¾ã¾ãƒã‚¤ãƒˆå˜ä½ã®è¨ˆç®—ã‚’è¡Œã†
         uint8_t *ptr = ptrData + i * width * 2;
         for (int x = 0; x < (width-1)*2; x+=2) {
           ptr[x+2] += ptr[x+0] + (ptr[x+3] + ptr[x+1]) / 256;
@@ -636,7 +639,7 @@ namespace psd {
 #endif
       }
     } else if (depth == 32) {
-      // 4ƒoƒCƒg‚ğƒoƒCƒg–ˆ‚É•À‚×‚Ä‚ ‚é‚Ì‚ÅƒoƒCƒg’PˆÊ‚Åƒfƒ‹ƒ^•œŒ³
+      // 4ãƒã‚¤ãƒˆã‚’ãƒã‚¤ãƒˆæ¯ã«ä¸¦ã¹ã¦ã‚ã‚‹ã®ã§ãƒã‚¤ãƒˆå˜ä½ã§ãƒ‡ãƒ«ã‚¿å¾©å…ƒ
       uint8_t *ptrData = (uint8_t *)buf;
       for (int i = 0; i < height; i++) {
         uint8_t *ptr    = ptrData + i * width * 4;
@@ -648,7 +651,7 @@ namespace psd {
         }
       }
 
-      // ƒoƒCƒg’PˆÊ‚Å•œŒ³‚µ‚½‚à‚Ì‚ğ4ƒoƒCƒg’l‚ÉƒpƒbƒN
+      // ãƒã‚¤ãƒˆå˜ä½ã§å¾©å…ƒã—ãŸã‚‚ã®ã‚’4ãƒã‚¤ãƒˆå€¤ã«ãƒ‘ãƒƒã‚¯
       int offset1 = width;
       int offset2 = 2 * offset1;
       int offset3 = 3 * offset1;
@@ -671,9 +674,9 @@ namespace psd {
 #endif // USE_ZLIB
 
   // --------------------------------------------------------------------------
-  // ‰æ‘œæ“¾
+  // ç”»åƒå–å¾—
   // --------------------------------------------------------------------------
-  // ƒŒƒCƒ„[‰æ‘œ‚ğæ“¾
+  // ãƒ¬ã‚¤ãƒ¤ãƒ¼ç”»åƒã‚’å–å¾—
   bool PSDFile::getLayerImageById(int layerId, void *buf, const ColorFormat &format,
                                   int bufPitchByte, ImageMode mode)
   {
@@ -685,7 +688,7 @@ namespace psd {
     }
   }
 
-  // ƒŒƒCƒ„[‰æ‘œ‚ğæ“¾
+  // ãƒ¬ã‚¤ãƒ¤ãƒ¼ç”»åƒã‚’å–å¾—
   bool PSDFile::getLayerImage(LayerInfo &layer, void *buf, const ColorFormat &format,
                               int bufPitchByte, ImageMode mode)
   {
@@ -745,18 +748,18 @@ namespace psd {
         continue;
       }
 
-      // •ª—£æ“¾ƒ‚[ƒh‚Å‚ÍA‚»‚ê‚¼‚ê•s—v‚Èƒ`ƒƒƒlƒ‹‚Íˆ—‚µ‚È‚¢
+      // åˆ†é›¢å–å¾—ãƒ¢ãƒ¼ãƒ‰ã§ã¯ã€ãã‚Œãã‚Œä¸è¦ãªãƒãƒ£ãƒãƒ«ã¯å‡¦ç†ã—ãªã„
       if ((mode == IMAGE_MODE_IMAGE && channel.isMaskChannel()) ||
           (mode == IMAGE_MODE_MASK  && !channel.isMaskChannel())) {
         continue;
       }
 
-      // ƒ\[ƒXƒ`ƒƒƒlƒ‹ƒoƒbƒtƒ@‚Ì€”õ
+      // ã‚½ãƒ¼ã‚¹ãƒãƒ£ãƒãƒ«ãƒãƒƒãƒ•ã‚¡ã®æº–å‚™
       channel.imageData->init();
       int compressionId = channel.imageData->getInt16();
-      int dataLength    = channel.length - 2; // 2: “ª‚É‚Â‚¢‚Ä‚é compress id •ªŒ¸‚ç‚·
+      int dataLength    = channel.length - 2; // 2: é ­ã«ã¤ã„ã¦ã‚‹ compress id åˆ†æ¸›ã‚‰ã™
       if (compressionId != 0) {
-        // ˆ³k‚Ìê‡‚Íˆêƒ\[ƒXƒoƒbƒtƒ@‚ÉƒRƒs[‚µ‚Ä‚¨‚­
+        // åœ§ç¸®ã®å ´åˆã¯ä¸€æ™‚ã‚½ãƒ¼ã‚¹ãƒãƒƒãƒ•ã‚¡ã«ã‚³ãƒ”ãƒ¼ã—ã¦ãŠã
         if (dataLength > tmpSourceBufferSize) {
           delete[] tmpSourceBuffer;
           tmpSourceBuffer     = new uint8_t[dataLength];
@@ -765,7 +768,7 @@ namespace psd {
         channel.imageData->getData(tmpSourceBuffer, dataLength);
       }
       
-      // “WŠJæƒ`ƒƒƒlƒ‹ƒoƒbƒtƒ@&ƒ`ƒƒƒlƒ‹id‚ÌƒZƒbƒg
+      // å±•é–‹å…ˆãƒãƒ£ãƒãƒ«ãƒãƒƒãƒ•ã‚¡&ãƒãƒ£ãƒãƒ«idã®ã‚»ãƒƒãƒˆ
       int bufSize = channel.isMaskChannel() ? maskChannelBytes : imageChannelBytes;
       uint8_t *decodedChannel = new uint8_t[bufSize];
       uint8_t channelId       = channel.id;
@@ -773,7 +776,7 @@ namespace psd {
       int width = channel.isMaskChannel() ? maskWidth : imageWidth;
       int height = channel.isMaskChannel() ? maskHeight : imageHeight;
       
-      // ƒ`ƒƒƒlƒ‹ƒf[ƒ^“WŠJ
+      // ãƒãƒ£ãƒãƒ«ãƒ‡ãƒ¼ã‚¿å±•é–‹
       switch (compressionId) {
       case 0: // raw
         channel.imageData->getData(decodedChannel, bufSize);
@@ -803,7 +806,7 @@ namespace psd {
         break;
       }
 
-      // TODO real user mask ‚Æ user mask ‚ª“¯‚É“ü‚Á‚Ä‚éƒP[ƒX
+      // TODO real user mask ã¨ user mask ãŒåŒæ™‚ã«å…¥ã£ã¦ã‚‹ã‚±ãƒ¼ã‚¹
       switch (channel.id) {
       case CH_ID_TRANSP:     alphaChannelIndex = i; break;
       case CH_ID_UMASK:      maskChannelIndex  = i; break;
@@ -823,14 +826,14 @@ namespace psd {
       return false;
     }
 
-    // ƒCƒ[ƒWæ“¾ƒ‚[ƒh‚É‡‚í‚¹‚Äƒf[ƒ^‚ğ’²®
+    // ã‚¤ãƒ¡ãƒ¼ã‚¸å–å¾—ãƒ¢ãƒ¼ãƒ‰ã«åˆã‚ã›ã¦ãƒ‡ãƒ¼ã‚¿ã‚’èª¿æ•´
     int colorMode = header.mode;
     switch (mode) {
     case IMAGE_MODE_IMAGE:
-      // ƒCƒ[ƒW‚Ì‚İB‚Æ‚­‚É’²®‚Í•s—v
+      // ã‚¤ãƒ¡ãƒ¼ã‚¸ã®ã¿ã€‚ã¨ãã«èª¿æ•´ã¯ä¸è¦
       break;
     case IMAGE_MODE_MASKEDIMAGE:      
-      // ƒ}ƒXƒNƒ`ƒƒƒlƒ‹‚ğƒAƒ‹ƒtƒ@ƒ`ƒƒƒlƒ‹‚ÉŒJ‚è‚Ş
+      // ãƒã‚¹ã‚¯ãƒãƒ£ãƒãƒ«ã‚’ã‚¢ãƒ«ãƒ•ã‚¡ãƒãƒ£ãƒãƒ«ã«ç¹°ã‚Šè¾¼ã‚€
       if (maskChannelIndex >= 0 &&
           alphaChannelIndex >= 0) {
         uint8_t *maskChannel  = decodedChannels[maskChannelIndex];
@@ -857,7 +860,7 @@ namespace psd {
       }
       break;
     case IMAGE_MODE_MASK:
-      // maskƒ‚[ƒh‚Ì‚Æ‚«‚ÍƒOƒŒ[‰æ‘œ‚ÉƒtƒFƒCƒN‚·‚é
+      // maskãƒ¢ãƒ¼ãƒ‰ã®ã¨ãã¯ã‚°ãƒ¬ãƒ¼ç”»åƒã«ãƒ•ã‚§ã‚¤ã‚¯ã™ã‚‹
       colorMode     = COLOR_MODE_GRAYSCALE;
       imageWidth    = maskWidth;
       imageHeight   = maskHeight;
@@ -867,7 +870,7 @@ namespace psd {
       break;
     }
 
-    // ƒ`ƒƒƒlƒ‹ƒf[ƒ^‚ğƒsƒNƒZƒ‹ƒf[ƒ^‚Éƒ}[ƒW
+    // ãƒãƒ£ãƒãƒ«ãƒ‡ãƒ¼ã‚¿ã‚’ãƒ”ã‚¯ã‚»ãƒ«ãƒ‡ãƒ¼ã‚¿ã«ãƒãƒ¼ã‚¸
     switch(colorMode) {
     case COLOR_MODE_BITMAP:
       mergeChannelsBitmap(buf, imageWidth, imageHeight,
@@ -972,7 +975,7 @@ namespace psd {
       bufPitchByte = imageWidth * 4;
     }
 
-    // ƒ\[ƒXƒ`ƒƒƒlƒ‹ƒoƒbƒtƒ@‚Ì€”õ
+    // ã‚½ãƒ¼ã‚¹ãƒãƒ£ãƒãƒ«ãƒãƒƒãƒ•ã‚¡ã®æº–å‚™
     imageData->init();
     uint8_t *tmpSourceBuffer = 0;
     int compressionId = imageData->getInt16();
@@ -982,7 +985,7 @@ namespace psd {
       imageData->getData(tmpSourceBuffer, dataLength);
     }
 
-    // “WŠJæƒ`ƒƒƒlƒ‹ƒoƒbƒtƒ@‚Ì€”õ
+    // å±•é–‹å…ˆãƒãƒ£ãƒãƒ«ãƒãƒƒãƒ•ã‚¡ã®æº–å‚™
     int channels = header.channels;
     std::vector<uint8_t*> decodedChannels(channels);
     std::vector<int>      channelIds(channels);
@@ -991,7 +994,7 @@ namespace psd {
       channelIds[i] = i;
     }
     
-    // ƒ`ƒƒƒlƒ‹ƒf[ƒ^“WŠJ
+    // ãƒãƒ£ãƒãƒ«ãƒ‡ãƒ¼ã‚¿å±•é–‹
     switch (compressionId) {
     case 0: // raw
       {

@@ -3,7 +3,7 @@
 #include <string>
 
 namespace psd {
-  // ƒŠƒ\[ƒXƒ[ƒ_
+  // ãƒªã‚½ãƒ¼ã‚¹ãƒ­ãƒ¼ãƒ€
   bool loadResourceSlice(Data &data, ImageResourceInfo &res);
   bool loadResourceGridAndGuide(Data &data, ImageResourceInfo &res);
   bool loadResourceColorTableCount(Data &data, ImageResourceInfo &res);

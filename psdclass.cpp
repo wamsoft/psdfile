@@ -54,7 +54,7 @@ static int convBlendMode(psd::BlendMode mode)
 }
 
 /**
- * C•¶š—ñˆ——p
+ * Cæ–‡å­—åˆ—å‡¦ç†ç”¨
  */
 class NarrowString {
 private:
@@ -82,7 +82,7 @@ public:
 };
 
 /**
- * ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+ * ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
  */
 PSD::PSD(iTJSDispatch2 *objthis) : objthis(objthis)
 #ifdef LOAD_MEMORY
@@ -98,14 +98,14 @@ PSD::PSD(iTJSDispatch2 *objthis) : objthis(objthis)
 };
 
 /**
- * ƒfƒXƒgƒ‰ƒNƒ^
+ * ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
  */
 PSD::~PSD() {
-	clearData(); // ‚±‚±‚ÅŒÄ‚Î‚È‚¢‚Æ delete ‚É‚Íe‚Ì‚Ù‚¤‚Å‚Í‰¼‘zŠÖ”‚ª‚æ‚Î‚ê‚È‚¢
+	clearData(); // ã“ã“ã§å‘¼ã°ãªã„ã¨ delete æ™‚ã«ã¯è¦ªã®ã»ã†ã§ã¯ä»®æƒ³é–¢æ•°ãŒã‚ˆã°ã‚Œãªã„
 };
 
 /**
- * ƒCƒ“ƒXƒ^ƒ“ƒX¶¬ƒtƒ@ƒNƒgƒŠ
+ * ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç”Ÿæˆãƒ•ã‚¡ã‚¯ãƒˆãƒª
  */
 tjs_error
 PSD::factory(PSD **result, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *objthis)
@@ -115,7 +115,7 @@ PSD::factory(PSD **result, tjs_int numparams, tTJSVariant **params, iTJSDispatch
 }
 
 /**
- * ¶¬‚Ì©ŒÈƒIƒuƒWƒFƒNƒg‚ğæ“¾
+ * ç”Ÿæˆæ™‚ã®è‡ªå·±ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å–å¾—
  */
 tTJSVariant
 PSD::getSelf()
@@ -124,29 +124,29 @@ PSD::getSelf()
 }
 
 /**
- * PSD‰æ‘œ‚Ìƒ[ƒh
- * @param filename ƒtƒ@ƒCƒ‹–¼
- * @return ƒ[ƒh‚É¬Œ÷‚µ‚½‚ç true
+ * PSDç”»åƒã®ãƒ­ãƒ¼ãƒ‰
+ * @param filename ãƒ•ã‚¡ã‚¤ãƒ«å
+ * @return ãƒ­ãƒ¼ãƒ‰ã«æˆåŠŸã—ãŸã‚‰ true
  */
 bool
 PSD::load(ttstr filename)
 {
 	ttstr file = TVPGetPlacedPath(filename);
 	if (!file.length()) {
-		// Œ©‚Â‚©‚ç‚È‚©‚Á‚½‚Ì‚Åƒ[ƒJƒ‹ƒpƒX‚Æ‚İ‚È‚µ‚Ä“Ç‚İ‚Ş
+		// è¦‹ã¤ã‹ã‚‰ãªã‹ã£ãŸã®ã§ãƒ­ãƒ¼ã‚«ãƒ«ãƒ‘ã‚¹ã¨ã¿ãªã—ã¦èª­ã¿è¾¼ã‚€
 		psd::PSDFile::load(NarrowString(filename));
 	} else {
 #ifdef LOAD_MEMORY
 		if (!wcschr(file.c_str(), '>')) {
-			// ƒ[ƒJƒ‹ƒtƒ@ƒCƒ‹‚È‚Ì‚Å’¼Ú“Ç‚İ‚Ş
+			// ãƒ­ãƒ¼ã‚«ãƒ«ãƒ•ã‚¡ã‚¤ãƒ«ãªã®ã§ç›´æ¥èª­ã¿è¾¼ã‚€
 			TVPGetLocalName(file);
 			psd::PSDFile::load(NarrowString(file));
 		} else {
-			// ƒƒ‚ƒŠ‚É“Ç‚İ‚ñ‚Åƒ[ƒh
+			// ãƒ¡ãƒ¢ãƒªã«èª­ã¿è¾¼ã‚“ã§ãƒ­ãƒ¼ãƒ‰
 			loadMemory(file);
 		}
 #else
-		// ƒXƒgƒŠ[ƒ€‚Æ‚µ‚Äƒ[ƒh
+		// ã‚¹ãƒˆãƒªãƒ¼ãƒ ã¨ã—ã¦ãƒ­ãƒ¼ãƒ‰
 		loadStream(file);
 #endif
 	}
@@ -173,8 +173,8 @@ PSD::clearData()
 }
 	
 /**
- * ƒŒƒCƒ„”Ô†‚ª“KØ‚©‚Ç‚¤‚©”»’è
- * @param no ƒŒƒCƒ„”Ô†
+ * ãƒ¬ã‚¤ãƒ¤ç•ªå·ãŒé©åˆ‡ã‹ã©ã†ã‹åˆ¤å®š
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
  */
 void
 PSD::checkLayerNo(int no)
@@ -188,8 +188,8 @@ PSD::checkLayerNo(int no)
 }
 
 /**
- * –¼‘O‚Ìæ“¾
- * @param layƒŒƒCƒ„î•ñ
+ * åå‰ã®å–å¾—
+ * @param layãƒ¬ã‚¤ãƒ¤æƒ…å ±
  */
 ttstr
 PSD::layname(psd::LayerInfo &lay)
@@ -204,9 +204,9 @@ PSD::layname(psd::LayerInfo &lay)
 }
 
 /**
- * ƒŒƒCƒ„í•Ê‚Ìæ“¾
- * @param no ƒŒƒCƒ„”Ô†
- * @return ƒŒƒCƒ„í•Ê
+ * ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥ã®å–å¾—
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+ * @return ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥
  */
 int
 PSD::getLayerType(int no)
@@ -216,9 +216,9 @@ PSD::getLayerType(int no)
 }
 
 /**
- * ƒŒƒCƒ„–¼Ì‚Ìæ“¾
- * @param no ƒŒƒCƒ„”Ô†
- * @return ƒŒƒCƒ„í•Ê
+ * ãƒ¬ã‚¤ãƒ¤åç§°ã®å–å¾—
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+ * @return ãƒ¬ã‚¤ãƒ¤ç¨®åˆ¥
  */
 ttstr
 PSD::getLayerName(int no)
@@ -228,9 +228,9 @@ PSD::getLayerName(int no)
 }
 
 /**
- * ƒŒƒCƒ„î•ñ‚Ìæ“¾
- * @param no ƒŒƒCƒ„”Ô†
- * @return ƒŒƒCƒ„î•ñ‚ªŠi”[‚³‚ê‚½«‘
+ * ãƒ¬ã‚¤ãƒ¤æƒ…å ±ã®å–å¾—
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+ * @return ãƒ¬ã‚¤ãƒ¤æƒ…å ±ãŒæ ¼ç´ã•ã‚ŒãŸè¾æ›¸
  */
 tTJSVariant
 PSD::getLayerInfo(int no)
@@ -272,7 +272,7 @@ PSD::getLayerInfo(int no)
 		dict.SetValue(L"transparency_protected", lay.isTransparencyProtected());
 		dict.SetValue(L"pixel_data_irrelevant",  lay.isPixelDataIrrelevant());
 
-		// ƒŒƒCƒ„[ƒJƒ“ƒv
+		// ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
 		if (lay.layerComps.size() > 0) {
 			ncbDictionaryAccessor compDict;
 			if (compDict.IsValid()) {
@@ -292,26 +292,26 @@ PSD::getLayerInfo(int no)
 			}
 		}
 
-		// SETPROP(dict, lay, adjustment_valid); // ’²®ƒŒƒCƒ„[‚©‚Ç‚¤‚©HƒŒƒCƒ„ƒ^ƒCƒv‚Å”»•Ê‰Â”\
+		// SETPROP(dict, lay, adjustment_valid); // èª¿æ•´ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‹ã©ã†ã‹ï¼Ÿãƒ¬ã‚¤ãƒ¤ã‚¿ã‚¤ãƒ—ã§åˆ¤åˆ¥å¯èƒ½
 		// SETPROP(dict, lay, fill_opacity);
 		// SETPROP(dict, lay, layer_name_id);
 		// SETPROP(dict, lay, layer_version);
 		// SETPROP(dict, lay, blend_clipped);
 		// SETPROP(dict, lay, blend_interior);
 		// SETPROP(dict, lay, knockout);
-		// SETPROP(dict, lay, transparency); // lspf(protection)‚Ì‚à‚Ì
+		// SETPROP(dict, lay, transparency); // lspf(protection)ã®ã‚‚ã®
 		// SETPROP(dict, lay, composite);
 		// SETPROP(dict, lay, position_respectively);
 		// SETPROP(dict, lay, sheet_color);
-		// SETPROP(dict, lay, reference_point_x); // “h‚è‚Â‚Ô‚µƒŒƒCƒ„iƒpƒ^[ƒ“j‚ÌƒIƒtƒZƒbƒg
-		// SETPROP(dict, lay, reference_point_y); // “h‚è‚Â‚Ô‚µƒŒƒCƒ„iƒpƒ^[ƒ“j‚ÌƒIƒtƒZƒbƒg
+		// SETPROP(dict, lay, reference_point_x); // å¡—ã‚Šã¤ã¶ã—ãƒ¬ã‚¤ãƒ¤ï¼ˆãƒ‘ã‚¿ãƒ¼ãƒ³ï¼‰ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
+		// SETPROP(dict, lay, reference_point_y); // å¡—ã‚Šã¤ã¶ã—ãƒ¬ã‚¤ãƒ¤ï¼ˆãƒ‘ã‚¿ãƒ¼ãƒ³ï¼‰ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
 		// SETPROP(dict, lay, transparency_shapes_layer);
 		// SETPROP(dict, lay, layer_mask_hides_effects);
 		// SETPROP(dict, lay, vector_mask_hides_effects);
 		// SETPROP(dict, lay, divider_type);
 		// SETPROP(dict, lay, divider_blend_mode);
 
-		// group layer ‚ÍƒXƒNƒŠƒvƒg‘¤‚Å‚Í layer_id QÆ‚Åˆø‚­‚æ‚¤‚É‚·‚é
+		// group layer ã¯ã‚¹ã‚¯ãƒªãƒ—ãƒˆå´ã§ã¯ layer_id å‚ç…§ã§å¼•ãã‚ˆã†ã«ã™ã‚‹
 		if (lay.parent != NULL)
 			dict.SetValue(L"group_layer_id", lay.parent->layerId);
 
@@ -322,10 +322,10 @@ PSD::getLayerInfo(int no)
 }
 
 /**
- * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(“à•”ˆ—)
- * @param layer “Ç‚İo‚µæƒŒƒCƒ„
- * @param no ƒŒƒCƒ„”Ô†
- * @param imageMode ƒCƒ[ƒWƒ‚[ƒh
+ * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(å†…éƒ¨å‡¦ç†)
+ * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
+ * @param imageMode ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒ¢ãƒ¼ãƒ‰
  */
 void
 PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
@@ -370,7 +370,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 		type = convBlendMode(lay.blendMode);
 	}
 	if (width <= 0 || height <= 0) {
-		// ƒTƒCƒY‚O‚ÌƒŒƒCƒ„‚Íƒ[ƒh‚Å‚«‚È‚¢
+		// ã‚µã‚¤ã‚ºï¼ã®ãƒ¬ã‚¤ãƒ¤ã¯ãƒ­ãƒ¼ãƒ‰ã§ããªã„
 		return;
 	}
 
@@ -392,7 +392,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 	if (imageMode == psd::IMAGE_MODE_MASK)
 		obj.SetValue(L"defaultMaskColor", mask.defaultColor);
 
-	// ‰æ‘œƒf[ƒ^‚ÌƒRƒs[
+	// ç”»åƒãƒ‡ãƒ¼ã‚¿ã®ã‚³ãƒ”ãƒ¼
 	unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_int>());
 	int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
 	if (dummyMask) {
@@ -405,9 +405,9 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 
 
 /**
- * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ
- * @param layer “Ç‚İo‚µæƒŒƒCƒ„
- * @param no ƒŒƒCƒ„”Ô†
+ * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+ * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
  */
 void
 PSD::getLayerData(tTJSVariant layer, int no)
@@ -416,9 +416,9 @@ PSD::getLayerData(tTJSVariant layer, int no)
 }
 
 /**
- * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(¶ƒCƒ[ƒW)
- * @param layer “Ç‚İo‚µæƒŒƒCƒ„
- * @param no ƒŒƒCƒ„”Ô†
+ * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(ç”Ÿã‚¤ãƒ¡ãƒ¼ã‚¸)
+ * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
  */
 void
 PSD::getLayerDataRaw(tTJSVariant layer, int no)
@@ -427,9 +427,9 @@ PSD::getLayerDataRaw(tTJSVariant layer, int no)
 }
 
 /**
- * ƒŒƒCƒ„ƒf[ƒ^‚Ì“Ç‚İo‚µ(ƒ}ƒXƒN‚Ì‚İ)
- * @param layer “Ç‚İo‚µæƒŒƒCƒ„
- * @param no ƒŒƒCƒ„”Ô†
+ * ãƒ¬ã‚¤ãƒ¤ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—(ãƒã‚¹ã‚¯ã®ã¿)
+ * @param layer èª­ã¿å‡ºã—å…ˆãƒ¬ã‚¤ãƒ¤
+ * @param no ãƒ¬ã‚¤ãƒ¤ç•ªå·
  */
 void
 PSD::getLayerDataMask(tTJSVariant layer, int no)
@@ -438,9 +438,9 @@ PSD::getLayerDataMask(tTJSVariant layer, int no)
 }
 
 /**
- * ƒXƒ‰ƒCƒXƒf[ƒ^‚Ì“Ç‚İo‚µ
- * @return ƒXƒ‰ƒCƒXî•ñ«‘ %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
- *         ƒXƒ‰ƒCƒXî•ñ‚ª‚È‚¢ê‡‚Í void ‚ğ•Ô‚·
+ * ã‚¹ãƒ©ã‚¤ã‚¹ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+ * @return ã‚¹ãƒ©ã‚¤ã‚¹æƒ…å ±è¾æ›¸ %[ top, left, bottom, right, slices:[ %[ id, group_id, left, top, bottom, right ], ... ] ]
+ *         ã‚¹ãƒ©ã‚¤ã‚¹æƒ…å ±ãŒãªã„å ´åˆã¯ void ã‚’è¿”ã™
  */
 tTJSVariant
 PSD::getSlices()
@@ -493,9 +493,9 @@ PSD::getSlices()
 }
 
 /**
- * ƒKƒCƒhƒf[ƒ^‚Ì“Ç‚İo‚µ
- * @return ƒKƒCƒhî•ñ«‘ %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
- *         ƒKƒCƒhî•ñ‚ª‚È‚¢ê‡‚Í void ‚ğ•Ô‚·
+ * ã‚¬ã‚¤ãƒ‰ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿å‡ºã—
+ * @return ã‚¬ã‚¤ãƒ‰æƒ…å ±è¾æ›¸ %[ vertical:[ x1, x2, ... ], horizontal:[ y1, y2, ... ] ]
+ *         ã‚¬ã‚¤ãƒ‰æƒ…å ±ãŒãªã„å ´åˆã¯ void ã‚’è¿”ã™
  */
 tTJSVariant
 PSD::getGuides()
@@ -525,11 +525,11 @@ PSD::getGuides()
 }
 
 /**
- * ‡¬Œ‹‰Ê‚Ìæ“¾Bæ“¾—Ìˆæ‚Í‰æ‘œ‘S‘ÌƒTƒCƒY“à‚É‚¨‚³‚Ü‚Á‚Ä‚é•K—v‚ª‚ ‚è‚Ü‚·
- * ’ˆÓFPSDƒtƒ@ƒCƒ‹©‘Ì‚É‡¬Ï‚İ‰æ‘œ‚ª‘¶İ‚µ‚È‚¢ê‡‚Íæ“¾‚É¸”s‚µ‚Ü‚·
+ * åˆæˆçµæœã®å–å¾—ã€‚å–å¾—é ˜åŸŸã¯ç”»åƒå…¨ä½“ã‚µã‚¤ã‚ºå†…ã«ãŠã•ã¾ã£ã¦ã‚‹å¿…è¦ãŒã‚ã‚Šã¾ã™
+ * æ³¨æ„ï¼šPSDãƒ•ã‚¡ã‚¤ãƒ«è‡ªä½“ã«åˆæˆæ¸ˆã¿ç”»åƒãŒå­˜åœ¨ã—ãªã„å ´åˆã¯å–å¾—ã«å¤±æ•—ã—ã¾ã™
  *
- * @param layer Ši”[æƒŒƒCƒ„(width,heightƒTƒCƒY‚É’²®‚³‚ê‚é)
- * @return æ“¾‚É¬Œ÷‚µ‚½‚ç true
+ * @param layer æ ¼ç´å…ˆãƒ¬ã‚¤ãƒ¤(width,heightã‚µã‚¤ã‚ºã«èª¿æ•´ã•ã‚Œã‚‹)
+ * @return å–å¾—ã«æˆåŠŸã—ãŸã‚‰ true
  */
 bool
 PSD::getBlend(tTJSVariant layer) {
@@ -537,10 +537,10 @@ PSD::getBlend(tTJSVariant layer) {
 		TVPThrowExceptionMessage(L"not layer");
 	}
 
-	// ‡¬Œ‹‰Ê‚ğ¶¬
+	// åˆæˆçµæœã‚’ç”Ÿæˆ
 	if (imageData) {
 
-		// Ši”[æ‚ğ’²®
+		// æ ¼ç´å…ˆã‚’èª¿æ•´
 		ncbPropAccessor obj(layer);
 		obj.SetValue(L"width",  get_width());
 		obj.SetValue(L"height", get_height());
@@ -549,7 +549,7 @@ PSD::getBlend(tTJSVariant layer) {
 		obj.SetValue(L"imageWidth",  get_width());
 		obj.SetValue(L"imageHeight", get_height());
 
-		// ‰æ‘œƒf[ƒ^‚ÌƒRƒs[
+		// ç”»åƒãƒ‡ãƒ¼ã‚¿ã®ã‚³ãƒ”ãƒ¼
 		unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_int>());
 		int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
 		getMergedImage(buffer, psd::BGRA_LE, pitch);
@@ -561,7 +561,7 @@ PSD::getBlend(tTJSVariant layer) {
 }
 
 /**
- * ƒŒƒCƒ„[ƒJƒ“ƒv
+ * ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
  */
 tTJSVariant
 PSD::getLayerComp()
@@ -596,12 +596,12 @@ PSD::getLayerComp()
 	return result;
 }
 
-// ƒŒƒCƒ„–¼‚ğ•Ô‚·
+// ãƒ¬ã‚¤ãƒ¤åã‚’è¿”ã™
 ttstr
 PSD::path_layname(psd::LayerInfo &lay)
 {
 	ttstr ret = layname(lay);
-	// ³‹K‰»
+	// æ­£è¦åŒ–
 	ttstr from = "/";
 	ttstr to   = "_";
 	ret.Replace(from, to, true);
@@ -609,7 +609,7 @@ PSD::path_layname(psd::LayerInfo &lay)
 	return ret;
 }
 
-// ƒŒƒCƒ„‚ÌƒpƒX–¼‚ğ•Ô‚·
+// ãƒ¬ã‚¤ãƒ¤ã®ãƒ‘ã‚¹åã‚’è¿”ã™
 ttstr
 PSD::pathname(psd::LayerInfo &lay)
 {
@@ -622,13 +622,13 @@ PSD::pathname(psd::LayerInfo &lay)
 	return ttstr("root/") + name;
 }
 
-// ƒXƒgƒŒ[ƒWˆ——pƒf[ƒ^‚Ì‰Šú‰»
+// ã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸å‡¦ç†ç”¨ãƒ‡ãƒ¼ã‚¿ã®åˆæœŸåŒ–
 void
 PSD::startStorage()
 {
 	if (!storageStarted) {
 		storageStarted = true;
-		// ƒŒƒCƒ„ŒŸõ—p‚Ìî•ñ‚ğ¶¬
+		// ãƒ¬ã‚¤ãƒ¤æ¤œç´¢ç”¨ã®æƒ…å ±ã‚’ç”Ÿæˆ
 		int count = (int)layerList.size();
 		for (int i=count-1;i>=0;i--) {
 			psd::LayerInfo &lay = layerList[i];
@@ -653,29 +653,29 @@ checkAllNum(const tjs_char *p)
 }
 	
 /*
- * w’è‚µ‚½–¼‘O‚ÌƒŒƒCƒ„‚Ì‘¶İƒ`ƒFƒbƒN
- * @param name ƒpƒX‚ğŠÜ‚ŞƒŒƒCƒ„–¼
- * @param layerIdxRet ƒŒƒCƒ„ƒCƒ“ƒfƒbƒNƒX”Ô†‚ğ•Ô‚·
+ * æŒ‡å®šã—ãŸåå‰ã®ãƒ¬ã‚¤ãƒ¤ã®å­˜åœ¨ãƒã‚§ãƒƒã‚¯
+ * @param name ãƒ‘ã‚¹ã‚’å«ã‚€ãƒ¬ã‚¤ãƒ¤å
+ * @param layerIdxRet ãƒ¬ã‚¤ãƒ¤ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ç•ªå·ã‚’è¿”ã™
  */
 bool
 PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 {
 	startStorage();
 
-	// ƒ‹[ƒg•”‚ğæ“¾
+	// ãƒ«ãƒ¼ãƒˆéƒ¨ã‚’å–å¾—
 	const tjs_char *p = filename.c_str();
 
-	// idw’è‚Ìê‡
+	// idæŒ‡å®šã®å ´åˆ
 	if (wcsncmp(p, L"id/", 3) == 0) {
 
 		p += 3;
 
-		// Šg’£q‚ğœ‹‚µ‚Ä”»’è
+		// æ‹¡å¼µå­ã‚’é™¤å»ã—ã¦åˆ¤å®š
 		const tjs_char *q;
 		if (!(q = wcsrchr(p, '/')) && ((q = wcschr(p, '.')) && (wcscmp(q, BMPEXT) == 0))) {
 			ttstr name = ttstr(p, q-p);
 			q = name.c_str();
-			if (checkAllNum(q)) { // •¶š¬“ü‹Ö~
+			if (checkAllNum(q)) { // æ–‡å­—æ··å…¥ç¦æ­¢
 				int id = _wtoi(q);
 				LayerIdIdxMap::const_iterator n = layerIdIdxMap.find(id);
 				if (n != layerIdIdxMap.end()) {
@@ -687,9 +687,9 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 
 	} else {
 
-		// ƒpƒX‚ğ•ª—£
+		// ãƒ‘ã‚¹ã‚’åˆ†é›¢
 		ttstr pname, fname;
-		// ÅŒã‚Ì/‚ğ’T‚·
+		// æœ€å¾Œã®/ã‚’æ¢ã™
 		const tjs_char *q;
 		if ((q = wcsrchr(p, '/'))) {
 			pname = ttstr(p, q-p+1);
@@ -698,17 +698,17 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 			return false;
 		}
 
-		// Šg’£q•ª—£
+		// æ‹¡å¼µå­åˆ†é›¢
 		ttstr basename;
 		p = fname.c_str();
-		// Å‰‚Ì . ‚ğ’T‚·
+		// æœ€åˆã® . ã‚’æ¢ã™
 		if ((q = wcschr(p, '.')) && (wcscmp(q, BMPEXT) == 0)) {
 			basename = ttstr(p, q-p);
 		} else {
 			return false;
 		}
 
-		// –¼‘O‚ğ’T‚·
+		// åå‰ã‚’æ¢ã™
 		PathMap::const_iterator n = pathMap.find(pname);
 		if (n != pathMap.end()) {
 			const NameIdxMap &names = n->second;
@@ -724,16 +724,16 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 }
 
 /*
- * w’è‚µ‚½ƒpƒX‚É‚ ‚éƒtƒ@ƒCƒ‹–¼ˆê——‚Ìæ“¾
- * @param pathname ƒpƒX–¼
- * @param lister ƒŠƒXƒgæ“¾—pƒCƒ“ƒ^[ƒtƒF[ƒX
+ * æŒ‡å®šã—ãŸãƒ‘ã‚¹ã«ã‚ã‚‹ãƒ•ã‚¡ã‚¤ãƒ«åä¸€è¦§ã®å–å¾—
+ * @param pathname ãƒ‘ã‚¹å
+ * @param lister ãƒªã‚¹ãƒˆå–å¾—ç”¨ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹
  */
 void
 PSD::GetListAt(const ttstr &pathname, iTVPStorageLister *lister)
 {
 	startStorage();
 
-	// IDˆê——‚©‚ç–¼‘O‚ğ¶¬
+	// IDä¸€è¦§ã‹ã‚‰åå‰ã‚’ç”Ÿæˆ
 	if (pathname == "id/") {
 		LayerIdIdxMap::const_iterator it = layerIdIdxMap.begin();
 		while (it != layerIdIdxMap.end()) {
@@ -744,7 +744,7 @@ PSD::GetListAt(const ttstr &pathname, iTVPStorageLister *lister)
 		return;
 	}
 
-	// ƒpƒX“o˜^î•ñ‚©‚ç–¼‘O‚ğ¶¬
+	// ãƒ‘ã‚¹ç™»éŒ²æƒ…å ±ã‹ã‚‰åå‰ã‚’ç”Ÿæˆ
 	PathMap::const_iterator n = pathMap.find(pathname);
 	if (n != pathMap.end()) {
 		const NameIdxMap &names = n->second;
@@ -758,9 +758,9 @@ PSD::GetListAt(const ttstr &pathname, iTVPStorageLister *lister)
 }
 
 /*
- * w’è‚µ‚½–¼‘O‚ÌƒŒƒCƒ„‚Ì‰æ‘œƒtƒ@ƒCƒ‹‚ğƒXƒgƒŠ[ƒ€‚Å•Ô‚·
- * @param name ƒpƒX‚ğŠÜ‚ŞƒŒƒCƒ„–¼
- * @return ƒtƒ@ƒCƒ‹ƒXƒgƒŠ[ƒ€
+ * æŒ‡å®šã—ãŸåå‰ã®ãƒ¬ã‚¤ãƒ¤ã®ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚¹ãƒˆãƒªãƒ¼ãƒ ã§è¿”ã™
+ * @param name ãƒ‘ã‚¹ã‚’å«ã‚€ãƒ¬ã‚¤ãƒ¤å
+ * @return ãƒ•ã‚¡ã‚¤ãƒ«ã‚¹ãƒˆãƒªãƒ¼ãƒ 
  */
 IStream *
 PSD::openLayerImage(const ttstr &name)
@@ -783,7 +783,7 @@ PSD::openLayerImage(const ttstr &name)
 			int isize = hsize + sizeof(BITMAPINFOHEADER);
 			int size  = isize  + pitch * height;
 
-			// ƒOƒ[ƒoƒ‹ƒq[ƒv‚ÉBMP‰æ‘œ‚ğì¬‚µ‚ÄƒXƒgƒŠ[ƒ€‚Æ‚µ‚Ä•Ô‚·
+			// ã‚°ãƒ­ãƒ¼ãƒãƒ«ãƒ’ãƒ¼ãƒ—ã«BMPç”»åƒã‚’ä½œæˆã—ã¦ã‚¹ãƒˆãƒªãƒ¼ãƒ ã¨ã—ã¦è¿”ã™
 			HGLOBAL handle = ::GlobalAlloc(GMEM_MOVEABLE, size);
 			if (handle) {
 				unsigned char *p = (unsigned char*)::GlobalLock(handle);
@@ -864,14 +864,14 @@ NCB_REGISTER_CLASS(PSD) {
   Variant("blend_mode_luminosity",          (int)psd::BLEND_MODE_LUMINOSITY);
   Variant("blend_mode_pass_through",        (int)psd::BLEND_MODE_PASS_THROUGH);
 
-  // NOTE libpsd ”ñŒİŠ·ƒ‚[ƒh
+  // NOTE libpsd éäº’æ›ãƒ¢ãƒ¼ãƒ‰
   Variant("blend_mode_darker_color",        (int)psd::BLEND_MODE_DARKER_COLOR);
   Variant("blend_mode_lighter_color",       (int)psd::BLEND_MODE_LIGHTER_COLOR);
   Variant("blend_mode_subtract",            (int)psd::BLEND_MODE_SUBTRACT);
   Variant("blend_mode_divide",              (int)psd::BLEND_MODE_DIVIDE);
   
 
-  // NOTE ‚±‚Ì’è”‚ÍlibpsdŒİŠ·‚Å‚Í‚ ‚è‚Ü‚¹‚ñ(folder‚Ü‚Å‚ÍŒİŠ·)
+  // NOTE ã“ã®å®šæ•°ã¯libpsdäº’æ›ã§ã¯ã‚ã‚Šã¾ã›ã‚“(folderã¾ã§ã¯äº’æ›)
   Variant("layer_type_normal",              (int)psd::LAYER_TYPE_NORMAL);
   Variant("layer_type_hidden",              (int)psd::LAYER_TYPE_HIDDEN);
   Variant("layer_type_folder",              (int)psd::LAYER_TYPE_FOLDER);

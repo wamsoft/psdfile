@@ -13,13 +13,13 @@
 
 namespace psd {
 
-	// ”Ä—p”Åƒoƒbƒtƒ@ƒRƒs[
+	// æ±ç”¨ç‰ˆãƒãƒƒãƒ•ã‚¡ã‚³ãƒ”ãƒ¼
 	template <typename Iterator>
 	inline void copyToBuffer(uint8_t *buffer, Iterator &start, int size) {
 		Iterator end = start;
 		std::advance(end, size);
 #if defined(_MSC_VER) && _MSC_VER >= 1400
-// std::copy ‚Ì security warning —}~
+// std::copy ã® security warning æŠ‘æ­¢
 #pragma warning(push) 
 #pragma warning(disable:4996) 
 #endif 
@@ -74,7 +74,7 @@ namespace psd {
 		var8[6] = *cur++;		var8[7] = *cur++;
 	}
 	
-	// ”Ä—pƒCƒeƒŒ[ƒ^QÆ
+	// æ±ç”¨ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿å‚ç…§
 	template <typename Iterator>
 	class IteratorData : public IteratorBase {
 	public:
@@ -239,7 +239,7 @@ namespace psd {
 	};
 	
 	/**
-	 * ƒCƒ[ƒWƒŠƒ\[ƒXƒp[ƒT
+	 * ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹ãƒ‘ãƒ¼ã‚µ
 	 */
 	template <typename Iterator>
 	struct ImageResourceParser : qi::grammar<Iterator> {
@@ -247,18 +247,18 @@ namespace psd {
 		typedef boost::iterator_range<Iterator> irange;
 
 		ImageResourceParser(Data &data) : ImageResourceParser::base_type(start), data(data) {
-			// ƒJƒbƒR“à‚Å®‚ªg‚¦‚È‚¢advance—p‚É–‘O‚ÉƒpƒfƒBƒ“ƒO“™‚ğŒvZ‚µ‚Ä‚¨‚­‚½‚ß‚Ìˆê•Ï”
+			// ã‚«ãƒƒã‚³å†…ã§å¼ãŒä½¿ãˆãªã„advanceç”¨ã«äº‹å‰ã«ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°ç­‰ã‚’è¨ˆç®—ã—ã¦ãŠããŸã‚ã®ä¸€æ™‚å¤‰æ•°
 			int paddedSize = 0;
 
-			// ƒCƒ[ƒWƒŠƒ\[ƒX’P‘Ì
+			// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹å˜ä½“
 			anImageResource =
 				(qi::lit("8BIM") >>                                  // signature
 				 qi::big_word >>                                     // resource ID
 				 qi::byte_ [qi::_a = qi::_1] >>                      // name size
 				 spirit::repeat(qi::_a)[qi::char_] >>                // name
-				 spirit::repeat((qi::_a + 1)%2)[qi::byte_] >>        // ƒpƒfƒBƒ“ƒO“Ç‚İ”ò‚Î‚µ
-         qi::big_dword [qi::_a = qi::_1] [phx::ref(paddedSize) = (qi::_a+1)/2*2] >> // ƒTƒCƒY
-         qi::raw[repos::qi::advance(phx::ref(paddedSize))]   // ƒf[ƒ^(ƒpƒfƒBƒ“ƒOŠÜ‚Ş)
+				 spirit::repeat((qi::_a + 1)%2)[qi::byte_] >>        // ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°èª­ã¿é£›ã°ã—
+         qi::big_dword [qi::_a = qi::_1] [phx::ref(paddedSize) = (qi::_a+1)/2*2] >> // ã‚µã‚¤ã‚º
+         qi::raw[repos::qi::advance(phx::ref(paddedSize))]   // ãƒ‡ãƒ¼ã‚¿(ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°å«ã‚€)
 				 )[phx::bind(&ImageResourceParser::addImageResource, this, qi::_1, qi::_3, qi::_5, qi::_6)];
 			start = *anImageResource;
 		}
@@ -266,7 +266,7 @@ namespace psd {
 		qi::rule<Iterator> start;
 		Data &data;
 
-		// ƒCƒ[ƒWƒŠƒ\[ƒX‚ğˆê‚Â’Ç‰Á‚·‚é
+		// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹ã‚’ä¸€ã¤è¿½åŠ ã™ã‚‹
 		void addImageResource(uint16_t id, std::vector<char> &name, int size, irange range) {
 			std::string strname;
 			if (name.size() > 0) {
@@ -278,7 +278,7 @@ namespace psd {
 	};
 
 	/**
-	 * ƒŒƒCƒ„ extra data ƒp[ƒT
+	 * ãƒ¬ã‚¤ãƒ¤ extra data ãƒ‘ãƒ¼ã‚µ
 	 */
 	template <typename Iterator>
 	struct LayerMaskParser : qi::grammar<Iterator> {
@@ -334,7 +334,7 @@ namespace psd {
 	};
 
 	/**
-	 * ƒŒƒCƒ„ blending range ƒp[ƒT
+	 * ãƒ¬ã‚¤ãƒ¤ blending range ãƒ‘ãƒ¼ã‚µ
 	 */
 	template <typename Iterator>
 	struct LayerBlendingRangeParser : qi::grammar<Iterator> {
@@ -362,7 +362,7 @@ namespace psd {
 	};
 	
 	/**
-	 * ƒŒƒCƒ„ extra data ƒp[ƒT
+	 * ãƒ¬ã‚¤ãƒ¤ extra data ãƒ‘ãƒ¼ã‚µ
 	 */
 	template <typename Iterator>
 	struct LayerExtraDataParser : qi::grammar<Iterator> {
@@ -387,7 +387,7 @@ namespace psd {
 				 spirit::repeat((4-(qi::_a+1)&3)&3)[qi::byte_] // padding
 				 );
 
-			// ’Ç‰ÁƒŒƒCƒ„î•ñ
+			// è¿½åŠ ãƒ¬ã‚¤ãƒ¤æƒ…å ±
 			additional =
 				((qi::lit("8BIM")[qi::_a=0] | qi::lit("8B64")[qi::_a=1]) >>
 				 qi::big_dword >> // key
@@ -442,7 +442,7 @@ namespace psd {
 	};
 	
 	/**
-	 * ƒŒƒCƒ„î•ñƒp[ƒT
+	 * ãƒ¬ã‚¤ãƒ¤æƒ…å ±ãƒ‘ãƒ¼ã‚µ
 	 */
 	template <typename Iterator>
 	struct LayerInfoParser : qi::grammar<Iterator> {
@@ -451,19 +451,19 @@ namespace psd {
 
 		LayerInfoParser(Data &data) : LayerInfoParser::base_type(start), data(data) {
 
-			// ƒ`ƒƒƒ“ƒlƒ‹î•ñ
+			// ãƒãƒ£ãƒ³ãƒãƒ«æƒ…å ±
 			channelInfo =
 				(qi::big_word >> // id
 				 qi::big_dword  // length
 				 )[phx::bind(&LayerInfoParser::addChannel, this, qi::_1, qi::_2)];
 
-			// ƒGƒNƒXƒgƒ‰ƒf[ƒ^—pˆ—
+			// ã‚¨ã‚¯ã‚¹ãƒˆãƒ©ãƒ‡ãƒ¼ã‚¿ç”¨å‡¦ç†
 			extraData =
 			    (qi::big_dword[qi::_a = qi::_1] >> // extra data size
 				 qi::raw[repos::qi::advance(qi::_a)]
 				 )[phx::bind(&LayerInfoParser::setExtraData, this, qi::_1, qi::_2)];
 			
-			// ƒŒƒCƒ„î•ñ
+			// ãƒ¬ã‚¤ãƒ¤æƒ…å ±
 			layerRecord =
 				(qi::eps [phx::bind(&LayerInfoParser::addLayer, this)] >> 
 				 qi::big_dword >> // top
@@ -482,7 +482,7 @@ namespace psd {
 				 qi::byte_     >> // filler(zero)
 				 extraData
 				 ;
-			// ƒp[ƒXŠJn•”
+			// ãƒ‘ãƒ¼ã‚¹é–‹å§‹éƒ¨
 			start =
 				(qi::big_word[phx::bind(&LayerInfoParser::setLayerCount, this, qi::_1)] >>
 				 layerRecords >>
@@ -490,7 +490,7 @@ namespace psd {
 				 );
 		}
 
-		// ƒŒƒCƒ„”w’è
+		// ãƒ¬ã‚¤ãƒ¤æ•°æŒ‡å®š
 		void setLayerCount(boost::int16_t count) {
 			data.mergedAlpha = count < 0;
 			if (count == 0) {
@@ -508,7 +508,7 @@ namespace psd {
 			data.layerList.push_back(LayerInfo());
 		}
 
-		// ƒ`ƒƒƒ“ƒlƒ‹ƒCƒ[ƒWƒf[ƒ^‚ÌêŠ‚ğ‹L˜^
+		// ãƒãƒ£ãƒ³ãƒãƒ«ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒ‡ãƒ¼ã‚¿ã®å ´æ‰€ã‚’è¨˜éŒ²
 		void setExtraData(int size, irange range) {
 			if (size > 0) {
 				LayerExtraDataParser<Iterator> parser(data.layerList.back().extraData);
@@ -516,7 +516,7 @@ namespace psd {
 			}
 		}
 
-		// ƒŒƒCƒ„Šî–{î•ñ‚ğİ’è
+		// ãƒ¬ã‚¤ãƒ¤åŸºæœ¬æƒ…å ±ã‚’è¨­å®š
 		void setLayerSize(int top, int left, int bottom, int right) {
 			LayerInfo &info = data.layerList.back();
 			info.top = top;
@@ -527,7 +527,7 @@ namespace psd {
       info.height = bottom - top;
 		}
 
-		// ƒŒƒCƒ„‚Ì‚»‚Ì‘¼‚Ìƒf[ƒ^‚ğİ’è
+		// ãƒ¬ã‚¤ãƒ¤ã®ãã®ä»–ã®ãƒ‡ãƒ¼ã‚¿ã‚’è¨­å®š
 		void setLayerData(int blendModeKey, int opacity, int clipping, int flag) {
 			LayerInfo &info = data.layerList.back();
 			info.blendModeKey = blendModeKey;
@@ -537,7 +537,7 @@ namespace psd {
 			info.flag = flag;
 		}
 
-		// ƒ`ƒƒƒ“ƒlƒ‹ƒCƒ[ƒWƒf[ƒ^‚ÌêŠ‚ğ‹L˜^
+		// ãƒãƒ£ãƒ³ãƒãƒ«ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒ‡ãƒ¼ã‚¿ã®å ´æ‰€ã‚’è¨˜éŒ²
 		void setChannelImageData(irange range) {
 			data.channelImageData = new IteratorData<Iterator>(range);
 		}
@@ -608,8 +608,8 @@ namespace psd {
         layerInfo;
 
 			start =
-				layerInfo >>    // ƒŒƒCƒ„î•ñ
-				globalLayerMaskInfo >> // ƒOƒ[ƒoƒ‹ƒŒƒCƒ„ƒ}ƒXƒN
+				layerInfo >>    // ãƒ¬ã‚¤ãƒ¤æƒ…å ±
+				globalLayerMaskInfo >> // ã‚°ãƒ­ãƒ¼ãƒãƒ«ãƒ¬ã‚¤ãƒ¤ãƒã‚¹ã‚¯
          -layerInfo2
 				;
 		}
@@ -647,25 +647,25 @@ namespace psd {
 		Parser(Data &data)
 			 : Parser::base_type(start), data(data), headerParser(data.header) {
 
-			// ƒJƒ‰[ƒ‚[ƒhî•ñ
+			// ã‚«ãƒ©ãƒ¼ãƒ¢ãƒ¼ãƒ‰æƒ…å ±
 			colorMode =
 				(qi::big_dword[qi::_a = qi::_1] >>          // size
 				 qi::raw[repos::qi::advance(qi::_a)] // data
 				 )[phx::bind(&Parser::setColorModeData, this, qi::_1, qi::_2)];
 
-			// ƒCƒ[ƒWƒŠƒ\[ƒXˆ—
+			// ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹å‡¦ç†
 			imageResource =
 				(qi::big_dword[qi::_a = qi::_1] >>          // size
 				 qi::raw[repos::qi::advance(qi::_a)]        // data
 				)[phx::bind(&Parser::setImageResource, this, qi::_1, qi::_2)];
 			
-			// ƒŒƒCƒ„‚Æƒ}ƒXƒN
+			// ãƒ¬ã‚¤ãƒ¤ã¨ãƒã‚¹ã‚¯
 			layerAndMask =
 				(qi::big_dword[qi::_a = qi::_1] >>      // size
          qi::raw[repos::qi::advance(qi::_a)] // data
 				)[phx::bind(&Parser::setLayerAndMask, this, qi::_1, qi::_2)];
 
-			// ‰æ‘œƒf[ƒ^
+			// ç”»åƒãƒ‡ãƒ¼ã‚¿
 			imageData = qi::raw[+qi::byte_][phx::bind(&Parser::setImageData, this, qi::_1)];
 
 			start =
@@ -686,16 +686,16 @@ namespace psd {
 		qi::rule<Iterator> imageData;
 		qi::rule<Iterator> start;
 
-		// ƒJƒ‰[ƒ‚[ƒhƒf[ƒ^‚ğ“o˜^
+		// ã‚«ãƒ©ãƒ¼ãƒ¢ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ã‚’ç™»éŒ²
 		void setColorModeData(int size, irange range) {
 			data.colorModeSize = size;
 			data.colorModeIterator = new IteratorData<Iterator>(range);
 		}
 		
 		/**
-		 * ƒCƒ[ƒWƒŠƒ\[ƒX‚ğ‰ğÍ
-		 * @param size ƒTƒCƒY
-		 * @param range ƒf[ƒ^—Ìˆæ
+		 * ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹ã‚’è§£æ
+		 * @param size ã‚µã‚¤ã‚º
+		 * @param range ãƒ‡ãƒ¼ã‚¿é ˜åŸŸ
 		 */
 		void setImageResource(int size, irange range) {
 			if (size > 0) {
@@ -705,9 +705,9 @@ namespace psd {
 		}
 
 		/**
-		 * ƒŒƒCƒ„Eƒ}ƒXƒNî•ñ‚ğ‰ğÍ
-		 * @param size ƒTƒCƒY
-		 * @param ƒf[ƒ^—Ìˆæ
+		 * ãƒ¬ã‚¤ãƒ¤ãƒ»ãƒã‚¹ã‚¯æƒ…å ±ã‚’è§£æ
+		 * @param size ã‚µã‚¤ã‚º
+		 * @param ãƒ‡ãƒ¼ã‚¿é ˜åŸŸ
 		 */
 		void setLayerAndMask(int size, irange range) {
 			if (size > 0) {
@@ -716,7 +716,7 @@ namespace psd {
 			}	
 		}
 
-		// ‡¬Ï‚İ‰æ‘œƒf[ƒ^‚Ìæ“ªˆÊ’u‚ğ“o˜^
+		// åˆæˆæ¸ˆã¿ç”»åƒãƒ‡ãƒ¼ã‚¿ã®å…ˆé ­ä½ç½®ã‚’ç™»éŒ²
 		void setImageData(irange range) {
 			data.imageData = new IteratorData<Iterator>(range);
 		}

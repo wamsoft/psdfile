@@ -5,7 +5,7 @@
 #include "psddesc.h"
 
 namespace psd {
-  // ƒXƒ‰ƒCƒXî•ñ‚ðƒ[ƒh
+  // ã‚¹ãƒ©ã‚¤ã‚¹æƒ…å ±ã‚’ãƒ­ãƒ¼ãƒ‰
   bool loadResourceSlice(Data &data, ImageResourceInfo &res)
   {
     int version = res.data->getInt32();
@@ -26,7 +26,7 @@ namespace psd {
         if (item.origin == 1) {
           item.associatedLayerId = res.data->getInt32();
         } else {
-          item.associatedLayerId = -1; // ‘½•ª‚O‚Å‚¢‚¢‚Í‚¸‚¾‚¯‚ÇƒhƒLƒ…ƒƒ“ƒg‚È‚¢‚Ì‚Åc
+          item.associatedLayerId = -1; // å¤šåˆ†ï¼ã§ã„ã„ã¯ãšã ã‘ã©ãƒ‰ã‚­ãƒ¥ãƒ¡ãƒ³ãƒˆãªã„ã®ã§â€¦
         }
         res.data->getUnicodeString(item.name);
         item.type   = res.data->getInt32();
@@ -55,16 +55,16 @@ namespace psd {
           16 == res.data->getInt32() &&
           dsc.load(res.data)) {
         dsc.dump();
-        // TODO ã‚Å“Ç‚ÝŽæ‚Á‚½‚à‚Ì‚Æ“¯‚¶‚à‚Ì‚ª‚»‚Ì‚Ü‚ÜDescriptor‚Å“ü‚Á‚Ä‚¢‚éH
+        // TODO ä¸Šã§èª­ã¿å–ã£ãŸã‚‚ã®ã¨åŒã˜ã‚‚ã®ãŒãã®ã¾ã¾Descriptorã§å…¥ã£ã¦ã„ã‚‹ï¼Ÿ
       }
     } else if (version == 7 || version == 8) {
-      // v7/v8 ‚ÍƒfƒBƒXƒNƒŠƒvƒ^Œ`Ž®‚ÅŠi”[‚³‚ê‚Ä‚¢‚é
+      // v7/v8 ã¯ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿å½¢å¼ã§æ ¼ç´ã•ã‚Œã¦ã„ã‚‹
       int ver = res.data->getInt32();
       if (ver == 16) {
         Descriptor dsc;
         if (dsc.load(res.data)) {
           dsc.dump();
-          // TODO data.slice‚Ö‚Ì•ÏŠ·Ši”[
+          // TODO data.sliceã¸ã®å¤‰æ›æ ¼ç´
         }
       }
     }
@@ -72,10 +72,10 @@ namespace psd {
     return true;
   }
 
-  // ƒOƒŠƒbƒh/ƒKƒCƒhî•ñ‚ðƒ[ƒh
+  // ã‚°ãƒªãƒƒãƒ‰/ã‚¬ã‚¤ãƒ‰æƒ…å ±ã‚’ãƒ­ãƒ¼ãƒ‰
   bool loadResourceGridAndGuide(Data &data, ImageResourceInfo &res)
   {
-    // “Ç‚ÝŽÌ‚Ä
+    // èª­ã¿æ¨ã¦
     int version = res.data->getInt32();
 
     data.gridGuide.horizontalGrid = res.data->getInt32();
@@ -93,21 +93,21 @@ namespace psd {
     return true;
   }
 
-  // ƒCƒ“ƒfƒbƒNƒXƒJƒ‰[ƒe[ƒuƒ‹ƒJƒEƒ“ƒg
+  // ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒ–ãƒ«ã‚«ã‚¦ãƒ³ãƒˆ
   bool loadResourceColorTableCount(Data &data, ImageResourceInfo &res)
   {
     data.colorTable.validCount = res.data->getInt16();
     return true;
   }
 
-  // “§–¾ƒCƒ“ƒfƒbƒNƒX
+  // é€æ˜Žã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹
   bool loadResourceTransparencyIndex(Data &data, ImageResourceInfo &res)
   {
     data.colorTable.transparencyIndex = res.data->getInt16();
     return true;
   }
 
-  // ƒŒƒCƒ„[ƒJƒ“ƒv
+  // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
   bool loadResourceLayerComps(Data &data, ImageResourceInfo &res)
   {
     int ver = res.data->getInt32();

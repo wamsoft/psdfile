@@ -9,7 +9,7 @@ namespace psd {
     int type = additional.data->getInt32();
     switch (type) {
     default:
-    case 0: // ƒtƒHƒ‹ƒ_ŠÖŒWˆÈŠO‚Ìê‡‚Í‘¼‚Å“KØ‚È‚à‚Ì‚ªƒZƒbƒg‚³‚ê‚é‚Ì‚Å–³Ž‹
+    case 0: // ãƒ•ã‚©ãƒ«ãƒ€é–¢ä¿‚ä»¥å¤–ã®å ´åˆã¯ä»–ã§é©åˆ‡ãªã‚‚ã®ãŒã‚»ãƒƒãƒˆã•ã‚Œã‚‹ã®ã§ç„¡è¦–
       break;
     case 1:
     case 2:
@@ -21,10 +21,10 @@ namespace psd {
     }
 
     if (additional.size >= 12) {
-      int signature = additional.data->getInt32();      // “Ç‚ÝŽÌ‚Ä
+      int signature = additional.data->getInt32();      // èª­ã¿æ¨ã¦
       layer.blendMode = blendKeyToMode(additional.data->getInt32());
       if (additional.size >= 16) {
-        int subType = additional.data->getInt32();      // “Ç‚ÝŽÌ‚Ä
+        int subType = additional.data->getInt32();      // èª­ã¿æ¨ã¦
       }
     }
     return true;
@@ -58,7 +58,7 @@ namespace psd {
       additional.data->advance(3);
       int len = additional.data->getInt32();
 
-      // ƒŒƒCƒ„[ƒJƒ“ƒv
+      // ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚«ãƒ³ãƒ—
       if (key == 'cmls') {
         int ver = additional.data->getInt32();
         if (ver != 16) {

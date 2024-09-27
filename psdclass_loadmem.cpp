@@ -19,12 +19,12 @@ PSD::loadMemory(const ttstr &filename)
 {
 	clearData();
 
-	// ‚Ü‚é‚²‚Æƒƒ‚ƒŠ‚É“Ç‚Ýž‚ñ‚Åˆ—
+	// ã¾ã‚‹ã”ã¨ãƒ¡ãƒ¢ãƒªã«èª­ã¿è¾¼ã‚“ã§å‡¦ç†
 	isLoaded = false;
 	IStream *stream = TVPCreateIStream(filename, TJS_BS_READ);
 	if (stream) {
 		try {
-			// ‘S•”ƒƒ‚ƒŠ‚É“Ç‚Ýž‚Þ
+			// å…¨éƒ¨ãƒ¡ãƒ¢ãƒªã«èª­ã¿è¾¼ã‚€
 			STATSTG stat;
 			stream->Stat(&stat, STATFLAG_NONAME);
 			tjs_uint64 qsize = (tjs_uint64)stat.cbSize.QuadPart;

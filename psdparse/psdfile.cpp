@@ -5,7 +5,7 @@
 
 namespace psd {
 
-// psdƒtƒ@ƒCƒ‹‚ğƒ[ƒh‚·‚é
+// psdãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ­ãƒ¼ãƒ‰ã™ã‚‹
 bool
 PSDFile::load(const char *filename)
 { 
@@ -49,7 +49,7 @@ PSDFile::load(const char *filename)
 } // namespace psd
 
 /**
- * ’P‘ÌƒfƒoƒbƒO—pƒƒCƒ“
+ * å˜ä½“ãƒ‡ãƒãƒƒã‚°ç”¨ãƒ¡ã‚¤ãƒ³
  */
 int
 // _tmain(int argc, _TCHAR* argv[])

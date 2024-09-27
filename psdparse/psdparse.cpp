@@ -6,13 +6,13 @@
 
 namespace psd {
 
-// ƒp[ƒXŠ®—¹‚µ‚½¶ƒf[ƒ^‚©‚ç•K—v‚È\‘¢‚ğ“WŠJ‚·‚é
+// ãƒ‘ãƒ¼ã‚¹å®Œäº†ã—ãŸç”Ÿãƒ‡ãƒ¼ã‚¿ã‹ã‚‰å¿…è¦ãªæ§‹é€ ã‚’å±•é–‹ã™ã‚‹
 bool
 Data::processParsed()
 {
   bool success = true;
 
-  // ƒCƒ[ƒWƒŠƒ\[ƒX‚ğ“WŠJ
+  // ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒªã‚½ãƒ¼ã‚¹ã‚’å±•é–‹
   for (uint32_t i = 0; i < imageResourceList.size(); i++) {
     ImageResourceInfo &res = imageResourceList[i];
 
@@ -33,7 +33,7 @@ Data::processParsed()
       success = loadResourceLayerComps(*this, res);
       break;
 
-    default: // –¢À‘•‚Í‚»‚Ì‚Ü‚ÜƒXƒ‹[
+    default: // æœªå®Ÿè£…ã¯ãã®ã¾ã¾ã‚¹ãƒ«ãƒ¼
     case 1000:  // 0x03E8 -- (Obsolete--Photoshop 2.0 only ) Contains five 2-byte values: number of channels, rows, columns, depth, and mode
     case 1001:  // 0x03E9 -- Macintosh print manager print info record
     case 1003:  // 0x03EB -- (Obsolete--Photoshop 2.0 only ) Indexed color table
@@ -124,7 +124,7 @@ Data::processParsed()
     }
   }
 
-  // ƒJƒ‰[ƒe[ƒuƒ‹
+  // ã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒ–ãƒ«
   if (header.mode == COLOR_MODE_INDEXED &&
       colorModeIterator &&
       colorModeSize == 768) {
@@ -144,26 +144,26 @@ Data::processParsed()
     }
   }
   
-  // ƒŒƒCƒ„‚ğ“WŠJ
+  // ãƒ¬ã‚¤ãƒ¤ã‚’å±•é–‹
   int offset = 0;
   for (uint32_t i = 0; i < layerList.size(); i++) {
     LayerInfo &layer = layerList[i];
 
-    // Šî–{î•ñ‚ÌƒZƒbƒgƒAƒbƒv
+    // åŸºæœ¬æƒ…å ±ã®ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—
     layer.owner = this;
     layer.layerName = layer.extraData.layerName;
     layer.layerType = LAYER_TYPE_NORMAL;
     layer.layerId   = -1;
     layer.fill_opacity = 255;
     
-    // ƒ`ƒƒƒlƒ‹ƒCƒ[ƒWƒCƒeƒŒ[ƒ^‚ğƒ`ƒƒƒlƒ‹–ˆ‚É“ªo‚µƒRƒs[
+    // ãƒãƒ£ãƒãƒ«ã‚¤ãƒ¡ãƒ¼ã‚¸ã‚¤ãƒ†ãƒ¬ãƒ¼ã‚¿ã‚’ãƒãƒ£ãƒãƒ«æ¯ã«é ­å‡ºã—ã‚³ãƒ”ãƒ¼
     for (uint32_t ch = 0; ch < layer.channels.size(); ch++) {
       ChannelInfo &channel = layer.channels[ch];
       channel.imageData = channelImageData->cloneOffset(offset);
       offset += channel.length;
     }
 
-    // ’Ç‰ÁƒŒƒCƒ„î•ñ‚ğ“WŠJ
+    // è¿½åŠ ãƒ¬ã‚¤ãƒ¤æƒ…å ±ã‚’å±•é–‹
     LayerExtraData &extra = layerList[i].extraData;
     for (uint32_t j = 0; j < extra.additionalLayers.size(); j++) {
       AdditionalLayerInfo &additional = extra.additionalLayers[j];
@@ -173,7 +173,7 @@ Data::processParsed()
       }
 
       switch (additional.key) {
-      // --- ’²®ƒŒƒCƒ„ ---
+      // --- èª¿æ•´ãƒ¬ã‚¤ãƒ¤ ---
       case 'grdm': // Gradient settings (Photoshop 6.0)
       case 'levl': // Levels
       case 'curv': // Curves
@@ -195,7 +195,7 @@ Data::processParsed()
         layer.layerType = LAYER_TYPE_ADJUST;
         break;
 
-      // --- “h‚è‚Â‚Ô‚µƒŒƒCƒ„ ---
+      // --- å¡—ã‚Šã¤ã¶ã—ãƒ¬ã‚¤ãƒ¤ ---
       case 'SoCo': // Solid color sheet setting (Photoshop 6.0)
       case 'GdFl': // Gradient fill setting (Photoshop 6.0)
       case 'PtFl': // Pattern fill setting (Photoshop 6.0)
@@ -203,7 +203,7 @@ Data::processParsed()
         layer.layerType = LAYER_TYPE_FILL;
         break;
 
-      // --- Šî–{“I‚ÈƒŒƒCƒ„î•ñ ---
+      // --- åŸºæœ¬çš„ãªãƒ¬ã‚¤ãƒ¤æƒ…å ± ---
       case 'lsct': // Section divider setting (Photoshop 6.0)
         success = loadLayerSectionDivider(layer, additional);
         break;
@@ -223,7 +223,7 @@ Data::processParsed()
         success = loadLayerFillOpacity(layer, additional);
         break;
         
-      // --- –¢‘Î‰ ---
+      // --- æœªå¯¾å¿œ ---
       case 'lrFX': // Effects Layer (Photoshop 5.0)
       case 'tySh': // Type Tool Info (Photoshop 5.0 and 5.5 only)
       case 'lfx2': // Object-based effects layer info (Photoshop 6.0)
@@ -273,7 +273,7 @@ Data::processParsed()
     }
   } // end of additionals
 
-  // ƒOƒ‹[ƒvî•ñ‚ğƒŠƒ“ƒN
+  // ã‚°ãƒ«ãƒ¼ãƒ—æƒ…å ±ã‚’ãƒªãƒ³ã‚¯
   std::stack<LayerInfo*> parent;
   parent.push(0);
   for (int i = (int)layerList.size() - 1; i >= 0; i--) {
@@ -294,7 +294,7 @@ Data::processParsed()
   return success;
 }
 
-// ƒŒƒCƒ„ID‚©‚çƒŒƒCƒ„‚ğæ“¾
+// ãƒ¬ã‚¤ãƒ¤IDã‹ã‚‰ãƒ¬ã‚¤ãƒ¤ã‚’å–å¾—
 LayerInfo *
 Data::getLayerById(int layerId)
 {

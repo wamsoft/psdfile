@@ -50,7 +50,7 @@ PSD::copyToBuffer(uint8_t *buf, tTVInteger pos, int size)
 			memcpy(buf, mBuffer, size);
 			return;
 		}
-		// ’¼Ú“Ç‚Ýž‚Þ
+		// ç›´æŽ¥èª­ã¿è¾¼ã‚€
 		LARGE_INTEGER n;
 		n.QuadPart = pos;
 		pStream->Seek(n, STREAM_SEEK_SET, 0);
