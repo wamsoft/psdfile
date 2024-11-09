@@ -105,17 +105,17 @@ public:
 		return false;
 	}
 
-	// open a storage and return a tTJSBinaryStream instance.
+	// open a storage and return a iTJSBinaryStream instance.
 	// name does not contain in-archive storage name but
 	// is normalized.
-	virtual tTJSBinaryStream * TJS_INTF_METHOD Open(const ttstr & name, tjs_uint32 flags) {
+	virtual iTJSBinaryStream * TJS_INTF_METHOD Open(const ttstr & name, tjs_uint32 flags) {
 		if (flags == TJS_BS_READ) { // 読み込みのみ
 			ttstr fname;
 			PSD *psd = getPSD(name, fname);
 			if (psd) {
 				IStream *stream = psd->openLayerImage(fname);
 				if (stream) {
-					tTJSBinaryStream *ret = TVPCreateBinaryStreamAdapter(stream);
+					iTJSBinaryStream *ret = TVPCreateBinaryStreamAdapter(stream);
 					stream->Release();
 					return ret;
 				}
