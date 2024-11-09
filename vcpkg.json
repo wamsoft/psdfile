@@ -1,0 +1,12 @@
+{
+  "name": "psdfile",
+  "version": "0.0.1",
+  "dependencies": [
+    "boost-iostreams",
+    "boost-spirit",
+    "boost-range",
+    "boost-predef",
+    "boost-detail",
+    "boost-filesystem"
+  ]
+}
