@@ -393,7 +393,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 		obj.SetValue(L"defaultMaskColor", mask.defaultColor);
 
 	// 画像データのコピー
-	unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_int>());
+	unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_intptr_t>());
 	int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
 	if (dummyMask) {
 		buffer[0] = buffer[1] = buffer[2] = mask.defaultColor;
@@ -550,7 +550,7 @@ PSD::getBlend(tTJSVariant layer) {
 		obj.SetValue(L"imageHeight", get_height());
 
 		// 画像データのコピー
-		unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_int>());
+		unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_intptr_t>());
 		int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
 		getMergedImage(buffer, psd::BGRA_LE, pitch);
 
