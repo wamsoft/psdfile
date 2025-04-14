@@ -824,7 +824,39 @@ PSD::openLayerImage(const ttstr &name)
 	}
 	return 0;
 }
-	
+
+/**
+ * LayerIDが未設定のレイヤに対してID番号を自動割り付け(base_id+1からlayer_no順に)
+ * @param base_id 割り付けID最小番号-1(※既存のいずれかのレイヤIDがこれより大きかったらその値が利用される)
+ * @return IDを設定したレイヤの枚数
+ */
+int PSD::assignAutoIds(int base_id)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(L"no data");
+	size_t count = layerList.size();
+	int min_id = -1;
+	typedef std::vector<psd::LayerInfo> LayerVec;
+	for (LayerVec::const_iterator it = layerList.begin(); it != layerList.end(); ++it) {
+		if (min_id < it->layerId) min_id = it->layerId;
+	}
+	if (base_id < min_id) base_id = min_id;
+
+	int assigned = 0;
+	for (LayerVec::iterator it = layerList.begin(); it != layerList.end(); ++it) {
+		if (it->layerId == -1) {
+			it->layerId = ++base_id;
+			++assigned;
+		}
+	}
+	return assigned;
+}
+static tjs_error AssignAutoIds(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	int base_id = numparams > 0 ? (tjs_int)*params[0] : 0;
+	int cnt = instance->assignAutoIds(base_id);
+	if (r) *r = (tjs_int)cnt;
+	return TJS_S_OK;
+}
 
 NCB_REGISTER_CLASS(PSD) {
 
@@ -902,5 +934,7 @@ NCB_REGISTER_CLASS(PSD) {
   NCB_METHOD(getLayerComp);
 
   NCB_METHOD(clearStorageCache);
+
+	RawCallback("assignAutoIds", &AssignAutoIds, 0);
 };
 

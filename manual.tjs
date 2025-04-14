@@ -69,6 +69,15 @@ class PSD {
 	 */
 	function load(filename);
 
+	/**
+	 * LayerIDが未設定のレイヤに対してID番号を自動割り付け(base_id+1からlayer_no順に)
+	 * Photoshop互換系のpsd保存ツールではレイヤIDが割り付けられないケースがあるため，psd://~/id/ が正しくロードできない問題がある
+	 * 基本的にはload直後に呼ぶことを推奨
+	 * @param base_id 割り付けID最小番号-1(※既存のいずれかのレイヤIDがこれより大きかったらその値が利用される)
+	 * @return IDを設定したレイヤの枚数
+	 */
+	function assignAutoIds(base_id=0);
+
 	// 画像の基本プロパティ
 	
 	property width; //< 画像横幅
@@ -108,6 +117,8 @@ class PSD {
 	 * fill_opacity 塗りの不透明度
 	 * visible      表示状態
 	 * name         レイヤ名
+	 * layer_id     レイヤID
+	 * group_layer_id 親レイヤID
 	 * type         合成モード（吉里吉里の対応モード)
 	 * clipping	クリッピングマスクの対象か？
 	 * mask		レイヤマスクを持っているかどうか？
@@ -117,6 +128,10 @@ class PSD {
 	 *              offset_y, // レイヤのYオフセット
 	 *              enable,   // 表示状態フラグ
 	 *            ],... ]
+	 * 以下 additional information （※詳細はPSD仕様書を参照のこと）
+	 * obsolete
+	 * transparency_protected
+	 * pixel_data_irrelevant
 	 */
 	function getLayerInfo(no);
 

@@ -139,6 +139,13 @@ public:
 	 */
 	tTJSVariant getLayerComp();
 
+	/**
+	 * LayerIDが未設定のレイヤに対してID番号を自動割り付け(base_id+1からlayer_no順に)
+	 * @param base_id 割り付けID最小番号-1(※既存の全てのレイヤIDがこれより大きかったらその値が利用される)
+	 * @return IDを設定したレイヤの枚数
+	 */
+	int assignAutoIds(int base_id = 0);
+
 protected:
 	iTJSDispatch2 *objthis; ///< 自己オブジェクト情報の参照
 	ttstr dname; ///< 登録用ベース名
