@@ -231,8 +231,9 @@ namespace psd {
     }
 
     // 戻り値オーバーロード用のクラス
-    struct _getter {
-      _getter(const std::vector<DescriptorItem*>& items, int id)
+    class DescriptorList_getter {
+    public:
+      DescriptorList_getter(const std::vector<DescriptorItem*>& items, int id)
       : items(items), id(id) { }
       DescriptorItem *get() const {
         return (id >= 0 && id <= (int)items.size()) ? items[id] : 0;
@@ -254,8 +255,9 @@ namespace psd {
     private:
       const std::vector<DescriptorItem*>& items;
       int id;
-    } item(int id) const {
-      return _getter(items, id);
+    };
+    DescriptorList_getter item(int id) const {
+      return DescriptorList_getter(items, id);
     }
 
     std::vector<DescriptorItem*> items;
