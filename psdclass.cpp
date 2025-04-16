@@ -912,7 +912,7 @@ NCB_REGISTER_CLASS(PSD) {
 
 	NCB_METHOD(load);
 
-#define INTPROP(name) Property(TJS_W(# name), &Class::get_ ## name, NULL)
+#define INTPROP(name) Property(TJS_W(# name), &Class::get_ ## name, (int)0)
 
 	INTPROP(width);
 	INTPROP(height);
