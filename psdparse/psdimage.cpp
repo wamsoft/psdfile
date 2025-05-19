@@ -689,10 +689,10 @@ namespace psd {
   }
 
   // レイヤー画像を取得
-  bool PSDFile::getLayerImage(LayerInfo &layer, void *buf, const ColorFormat &format,
+  bool PSDFile::getLayerImage(const LayerInfo &layer, void *buf, const ColorFormat &format,
                               int bufPitchByte, ImageMode mode)
   {
-    psd::LayerMask &mask  = layer.extraData.layerMask;
+    const psd::LayerMask &mask  = layer.extraData.layerMask;
 
     int imageWidth  = layer.width;
     int imageHeight = layer.height;
@@ -743,7 +743,7 @@ namespace psd {
     int alphaChannelIndex = -1;
     int maskChannelIndex = -1;
     for (int i = 0; i < channels; i ++)	{
-      ChannelInfo &channel = layer.channels[i];
+      const ChannelInfo &channel = layer.channels[i];
       if (channel.imageData == 0) {
         continue;
       }

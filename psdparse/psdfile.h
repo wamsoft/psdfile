@@ -28,7 +28,7 @@ namespace psd {
     // 合成済み画像(PSDに保持されている場合のみ)
     bool getMergedImage(void *buf, const ColorFormat &format, int bufPitchByte);
     // レイヤ画像
-    bool getLayerImage(LayerInfo &layer, void *buf, const ColorFormat &format,
+    bool getLayerImage(const LayerInfo &layer, void *buf, const ColorFormat &format,
                        int bufPitchByte, ImageMode mode);
     bool getLayerImageById(int layerId, void *buf, const ColorFormat &format,
                            int bufPitchByte, ImageMode mode);

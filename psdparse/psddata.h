@@ -366,7 +366,7 @@ namespace psd {
 		int length;
     IteratorBase *imageData;
 
-    bool isMaskChannel() { return (id == -3 || id == -2); }
+    bool isMaskChannel() const { return (id == -3 || id == -2); }
 	};
 
 	// レイヤ情報
@@ -407,11 +407,11 @@ namespace psd {
     // 親フォルダレイヤ
     LayerInfo *parent;
 
-    bool isTransparencyProtected() { return (flag & (1 << 0)) != 0; }
-    bool isVisible()               { return (flag & (1 << 1)) == 0; }
-    bool isObsolete()              { return (flag & (1 << 2)) != 0; }
-    bool isLaterVer5()             { return (flag & (1 << 3)) != 0; }
-    bool isPixelDataIrrelevant()   { return (flag & (1 << 4)) != 0; }
+    bool isTransparencyProtected() const { return (flag & (1 << 0)) != 0; }
+    bool isVisible()               const { return (flag & (1 << 1)) == 0; }
+    bool isObsolete()              const { return (flag & (1 << 2)) != 0; }
+    bool isLaterVer5()             const { return (flag & (1 << 3)) != 0; }
+    bool isPixelDataIrrelevant()   const { return (flag & (1 << 4)) != 0; }
 	};
 	
 	/**
