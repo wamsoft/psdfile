@@ -5,13 +5,14 @@
 
 namespace psd {
 
-// psdファイルをロードする
+// psdファイルをロードするための共通実装
+template <typename CharT>
 bool
-PSDFile::load(const char *filename)
+PSDFile::load(const CharT *filename)
 { 
 	clearData();
 
-	namespace spirit = boost::spirit;
+  namespace spirit = boost::spirit;
   namespace fs = boost::filesystem;
 
   isLoaded = false;
@@ -20,13 +21,13 @@ PSDFile::load(const char *filename)
   boost::system::error_code error;
   const bool result = fs::exists(file, error);
   if (!result || error) {
-    std::cerr << "file not found!: '" << filename << "'" << std::endl;
+    std::cerr << "file not found!: '" << file.filename() << "'" << std::endl;
     return false;
   }
 
-  in.open(filename);
+  in.open(file, boost::iostreams::mapped_file::readonly);
   if (!in.is_open()) {
-    std::cerr << "could not open input file: '" << filename << "'" << std::endl;
+    std::cerr << "could not open input file: '" << file.filename() << "'" << std::endl;
     return false;
   }
 
@@ -46,6 +47,10 @@ PSDFile::load(const char *filename)
 
   return isLoaded;
 }
+
+template bool PSDFile::load<char>(const char* filename);
+template bool PSDFile::load<wchar_t>(const wchar_t* filename);
+
 } // namespace psd
 
 /**

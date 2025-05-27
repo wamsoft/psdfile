@@ -16,13 +16,12 @@ namespace psd {
   class PSDFile : public Data {
   public:
     PSDFile() : isLoaded(false) {}
-    ~PSDFile() {}
-
-    // 読み込み済みフラグ
+    ~PSDFile() {}    // 読み込み済みフラグ
     bool isLoaded;
     
-    // ファイルロードエントリ
-    bool load(const char *filename);
+    // ファイルロードエントリ（テンプレート版）
+    template <typename CharT>
+    bool load(const CharT *filename);
 
 		// 画像データ取得インタフェース(バッファピッチが０の場合はfull fillされます)
     // 合成済み画像(PSDに保持されている場合のみ)
