@@ -1,14 +1,7 @@
 #ifndef __psdparse_h__
 #define __psdparse_h__
 
-#include <algorithm>
-#include <boost/spirit/include/qi.hpp>
-#include <boost/phoenix/bind.hpp>
-#include <boost/range/iterator_range.hpp>
-#include <boost/phoenix/core.hpp>
-#include <boost/phoenix/operator.hpp>
-#include <boost/spirit/repository/include/qi_advance.hpp>
-
+#include "stdafx.h"
 #include "psddata.h"
 
 namespace psd {

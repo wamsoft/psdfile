@@ -39,9 +39,14 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/phoenix.hpp>
+#include <boost/phoenix/bind.hpp>
+#include <boost/phoenix/core.hpp>
+#include <boost/phoenix/operator.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/spirit/include/support_multi_pass.hpp>
+#include <boost/spirit/repository/include/qi_advance.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+
 #endif
