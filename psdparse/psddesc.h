@@ -201,7 +201,7 @@ namespace psd {
     }
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (count:%d)\n", typeName(), items.size());
+      dprint("%s (count:%zd)\n", typeName(), items.size());
       for (int i = 0; i < (int)items.size(); i++) {
         items[i]->dump(indent+1);
       }
@@ -220,7 +220,7 @@ namespace psd {
     }
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (count:%d)\n", typeName(), items.size());
+      dprint("%s (count:%zd)\n", typeName(), items.size());
       for (int i = 0; i < (int)items.size(); i++) {
         indent_print(indent+1, "[%d] ", i);
         items[i]->dump(indent+2);
