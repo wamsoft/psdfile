@@ -134,13 +134,13 @@ PSD::load(ttstr filename)
 	ttstr file = TVPGetPlacedPath(filename);
 	if (!file.length()) {
 		// 見つからなかったのでローカルパスとみなして読み込む
-		psd::PSDFile::load(NarrowString(filename));
+		psd::PSDFile::load(filename.c_str());
 	} else {
 #ifdef LOAD_MEMORY
 		if (!wcschr(file.c_str(), '>')) {
 			// ローカルファイルなので直接読み込む
 			TVPGetLocalName(file);
-			psd::PSDFile::load(NarrowString(file));
+			psd::PSDFile::load(file.c_str());
 		} else {
 			// メモリに読み込んでロード
 			loadMemory(file);
