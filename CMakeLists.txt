@@ -28,6 +28,16 @@ add_library(${PROJECT_NAME} SHARED
 	main.cpp
 )
 
+if(MSVC)
+    # MSVC用設定
+    set_source_files_properties(
+		psdclass_loadmem.cpp
+		psdclass_loadstream.cpp
+		PROPERTIES COMPILE_FLAGS "/Od"
+    )
+endif()
+
+
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	ncbind
 	psdparse

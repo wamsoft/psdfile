@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME} STATIC
 	psdfile.cpp
 	psdimage.cpp
 	psdlayer.cpp
+	psdparse.h
 	psdparse.cpp
 	psdresource.cpp
 	stdafx.cpp
@@ -35,3 +36,13 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 	ZLIB::ZLIB
 	${Boost_LIBRARIES}
 )
+
+# 特定のファイルの最適化を無効化（メモリ関連のデバッグ用）
+if(MSVC)
+    # MSVC用設定
+    set_source_files_properties(
+		psdfile.cpp
+		psdparse.cpp
+        PROPERTIES COMPILE_FLAGS "/Od"
+    )
+endif()
