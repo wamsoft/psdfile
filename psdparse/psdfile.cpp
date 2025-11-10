@@ -49,7 +49,7 @@ PSDFile::load(const CharT *filename)
 }
 
 template bool PSDFile::load<char>(const char* filename);
-template bool PSDFile::load<wchar_t>(const wchar_t* filename);
+template bool PSDFile::load<tjs_char>(const tjs_char* filename);
 
 } // namespace psd
 

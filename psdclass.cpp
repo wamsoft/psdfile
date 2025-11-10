@@ -1,7 +1,7 @@
 #include <ncbind.hpp>
 #include "psdclass.h"
 
-#define BMPEXT L".bmp"
+#define BMPEXT TJS_W(".bmp")
 
 // ncb.typeconv: cast: enum->int
 NCB_TYPECONV_CAST_INTEGER(psd::LayerType);
@@ -137,7 +137,7 @@ PSD::load(ttstr filename)
 		psd::PSDFile::load(filename.c_str());
 	} else {
 #ifdef LOAD_MEMORY
-		if (!wcschr(file.c_str(), '>')) {
+		if (!TJS_strchr(file.c_str(), '>')) {
 			// ローカルファイルなので直接読み込む
 			TVPGetLocalName(file);
 			psd::PSDFile::load(file.c_str());
@@ -180,10 +180,10 @@ void
 PSD::checkLayerNo(int no)
 {
 	if (!isLoaded) {
-		TVPThrowExceptionMessage(L"no data");
+		TVPThrowExceptionMessage(TJS_W("no data"));
 	}
 	if (no < 0 || no >= get_layer_count()) {
-		TVPThrowExceptionMessage(L"not such layer");
+		TVPThrowExceptionMessage(TJS_W("not such layer"));
 	}
 }
 
@@ -258,19 +258,19 @@ PSD::getLayerInfo(int no)
 				break;
 			}
 		}
-		dict.SetValue(L"mask", mask);
-		dict.SetValue(L"type",       convBlendMode(lay.blendMode));
-		dict.SetValue(L"layer_type", lay.layerType);
-		dict.SetValue(L"blend_mode", lay.blendMode);
-		dict.SetValue(L"visible",    lay.isVisible());
-		dict.SetValue(L"name",       layname(lay));
+		dict.SetValue(TJS_W("mask"), mask);
+		dict.SetValue(TJS_W("type"),       convBlendMode(lay.blendMode));
+		dict.SetValue(TJS_W("layer_type"), lay.layerType);
+		dict.SetValue(TJS_W("blend_mode"), lay.blendMode);
+		dict.SetValue(TJS_W("visible"),    lay.isVisible());
+		dict.SetValue(TJS_W("name"),       layname(lay));
 
 		// additional information
 		SETPROP(dict, lay, clipping);
-		dict.SetValue(L"layer_id", lay.layerId);
-		dict.SetValue(L"obsolete", lay.isObsolete());
-		dict.SetValue(L"transparency_protected", lay.isTransparencyProtected());
-		dict.SetValue(L"pixel_data_irrelevant",  lay.isPixelDataIrrelevant());
+		dict.SetValue(TJS_W("layer_id"), lay.layerId);
+		dict.SetValue(TJS_W("obsolete"), lay.isObsolete());
+		dict.SetValue(TJS_W("transparency_protected"), lay.isTransparencyProtected());
+		dict.SetValue(TJS_W("pixel_data_irrelevant"),  lay.isPixelDataIrrelevant());
 
 		// レイヤーカンプ
 		if (lay.layerComps.size() > 0) {
@@ -281,14 +281,14 @@ PSD::getLayerInfo(int no)
 					ncbDictionaryAccessor tmp;
 					if (tmp.IsValid()) {
 						psd::LayerCompInfo &comp = it->second;
-						tmp.SetValue(L"id",         comp.id);
-						tmp.SetValue(L"offset_x",   comp.offsetX);
-						tmp.SetValue(L"offset_y",   comp.offsetY);
-						tmp.SetValue(L"enable",     comp.isEnabled);
+						tmp.SetValue(TJS_W("id"),         comp.id);
+						tmp.SetValue(TJS_W("offset_x"),   comp.offsetX);
+						tmp.SetValue(TJS_W("offset_y"),   comp.offsetY);
+						tmp.SetValue(TJS_W("enable"),     comp.isEnabled);
 						compDict.SetValue((tjs_int32)comp.id, tmp.GetDispatch());
 					}
 				}
-				dict.SetValue(L"layer_comp", compDict.GetDispatch());
+				dict.SetValue(TJS_W("layer_comp"), compDict.GetDispatch());
 			}
 		}
 
@@ -313,7 +313,7 @@ PSD::getLayerInfo(int no)
 
 		// group layer はスクリプト側では layer_id 参照で引くようにする
 		if (lay.parent != NULL)
-			dict.SetValue(L"group_layer_id", lay.parent->layerId);
+			dict.SetValue(TJS_W("group_layer_id"), lay.parent->layerId);
 
 		result = dict;
 	}
@@ -330,8 +330,8 @@ PSD::getLayerInfo(int no)
 void
 PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 {
-	if (!layer.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, L"Layer", NULL)) {
-		TVPThrowExceptionMessage(L"not layer");
+	if (!layer.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, TJS_W("Layer"), NULL)) {
+		TVPThrowExceptionMessage(TJS_W("not layer"));
 	}
 	checkLayerNo(no);
 
@@ -341,7 +341,7 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 	if (lay.layerType != psd::LAYER_TYPE_NORMAL
 			&& ! (lay.layerType == psd::LAYER_TYPE_FOLDER
 						&& imageMode == psd::IMAGE_MODE_MASK)) {
-		TVPThrowExceptionMessage(L"invalid layer type");
+		TVPThrowExceptionMessage(TJS_W("invalid layer type"));
 	}
 
 	int left, top, width, height, opacity, fill_opacity, type;
@@ -375,26 +375,26 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 	}
 
 	ncbPropAccessor obj(layer);
-	obj.SetValue(L"left", left);
-	obj.SetValue(L"top", top);
-	obj.SetValue(L"opacity", opacity);
-	obj.SetValue(L"fill_opacity", fill_opacity);
-	obj.SetValue(L"width",  width);
-	obj.SetValue(L"height", height);
-	obj.SetValue(L"type",   type);
-	obj.SetValue(L"visible", lay.isVisible());
-	obj.SetValue(L"imageLeft",  0);
-	obj.SetValue(L"imageTop",   0);
-	obj.SetValue(L"imageWidth",  width);
-	obj.SetValue(L"imageHeight", height);
-	obj.SetValue(L"name", layname(lay));
+	obj.SetValue(TJS_W("left"), left);
+	obj.SetValue(TJS_W("top"), top);
+	obj.SetValue(TJS_W("opacity"), opacity);
+	obj.SetValue(TJS_W("fill_opacity"), fill_opacity);
+	obj.SetValue(TJS_W("width"),  width);
+	obj.SetValue(TJS_W("height"), height);
+	obj.SetValue(TJS_W("type"),   type);
+	obj.SetValue(TJS_W("visible"), lay.isVisible());
+	obj.SetValue(TJS_W("imageLeft"),  0);
+	obj.SetValue(TJS_W("imageTop"),   0);
+	obj.SetValue(TJS_W("imageWidth"),  width);
+	obj.SetValue(TJS_W("imageHeight"), height);
+	obj.SetValue(TJS_W("name"), layname(lay));
 
 	if (imageMode == psd::IMAGE_MODE_MASK)
-		obj.SetValue(L"defaultMaskColor", mask.defaultColor);
+		obj.SetValue(TJS_W("defaultMaskColor"), mask.defaultColor);
 
 	// 画像データのコピー
-	unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_intptr_t>());
-	int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
+	unsigned char *buffer = (unsigned char*)obj.GetValue(TJS_W("mainImageBufferForWrite"), ncbTypedefs::Tag<tjs_intptr_t>());
+	int pitch = obj.GetValue(TJS_W("mainImageBufferPitch"), ncbTypedefs::Tag<tjs_int>());
 	if (dummyMask) {
 		buffer[0] = buffer[1] = buffer[2] = mask.defaultColor;
 		buffer[3] = 255;
@@ -445,46 +445,46 @@ PSD::getLayerDataMask(tTJSVariant layer, int no)
 tTJSVariant
 PSD::getSlices()
 {
-	if (!isLoaded) TVPThrowExceptionMessage(L"no data");
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
 	tTJSVariant result;
 	ncbDictionaryAccessor dict;
 	ncbArrayAccessor arr;
 	if (slice.isEnabled) {
 		if (dict.IsValid()) {
 			psd::SliceResource &sr = slice;
-			dict.SetValue(L"top",    sr.boundingTop);
-			dict.SetValue(L"left",   sr.boundingLeft);
-			dict.SetValue(L"bottom", sr.boundingBottom);
-			dict.SetValue(L"right",  sr.boundingRight);
-			dict.SetValue(L"name",   ttstr(sr.groupName.c_str()));
+			dict.SetValue(TJS_W("top"),    sr.boundingTop);
+			dict.SetValue(TJS_W("left"),   sr.boundingLeft);
+			dict.SetValue(TJS_W("bottom"), sr.boundingBottom);
+			dict.SetValue(TJS_W("right"),  sr.boundingRight);
+			dict.SetValue(TJS_W("name"),   ttstr(sr.groupName.c_str()));
 			if (arr.IsValid()) {
 				for (int i = 0; i < (int)sr.slices.size(); i++) {
 					ncbDictionaryAccessor tmp;
 					if (tmp.IsValid()) {
 						psd::SliceItem &item = sr.slices[i];
-						tmp.SetValue(L"id",      	item.id);
-						tmp.SetValue(L"group_id", item.groupId);
-						tmp.SetValue(L"origin",   item.origin);
-						tmp.SetValue(L"type",     item.type);
-						tmp.SetValue(L"left",     item.left);
-						tmp.SetValue(L"top",      item.top);
-						tmp.SetValue(L"right",    item.right);
-						tmp.SetValue(L"bottom",   item.bottom);
-						tmp.SetValue(L"color",    ((item.colorA<<24) | (item.colorR<<16) | (item.colorG<<8) | item.colorB));
-						tmp.SetValue(L"cell_text_is_html",    item.isCellTextHtml);
-						tmp.SetValue(L"horizontal_alignment", item.horizontalAlign);
-						tmp.SetValue(L"vertical_alignment",   item.verticalAlign);
-						tmp.SetValue(L"associated_layer_id",	item.associatedLayerId);
-						tmp.SetValue(L"name",      ttstr(item.name.c_str()));
-						tmp.SetValue(L"url",       ttstr(item.url.c_str()));
-						tmp.SetValue(L"target",    ttstr(item.target.c_str()));
-						tmp.SetValue(L"message",   ttstr(item.message.c_str()));
-						tmp.SetValue(L"alt_tag",   ttstr(item.altTag.c_str()));
-						tmp.SetValue(L"cell_text", ttstr(item.cellText.c_str()));
+						tmp.SetValue(TJS_W("id"),      	item.id);
+						tmp.SetValue(TJS_W("group_id"), item.groupId);
+						tmp.SetValue(TJS_W("origin"),   item.origin);
+						tmp.SetValue(TJS_W("type"),     item.type);
+						tmp.SetValue(TJS_W("left"),     item.left);
+						tmp.SetValue(TJS_W("top"),      item.top);
+						tmp.SetValue(TJS_W("right"),    item.right);
+						tmp.SetValue(TJS_W("bottom"),   item.bottom);
+						tmp.SetValue(TJS_W("color"),    ((item.colorA<<24) | (item.colorR<<16) | (item.colorG<<8) | item.colorB));
+						tmp.SetValue(TJS_W("cell_text_is_html"),    item.isCellTextHtml);
+						tmp.SetValue(TJS_W("horizontal_alignment"), item.horizontalAlign);
+						tmp.SetValue(TJS_W("vertical_alignment"),   item.verticalAlign);
+						tmp.SetValue(TJS_W("associated_layer_id"),	item.associatedLayerId);
+						tmp.SetValue(TJS_W("name"),      ttstr(item.name.c_str()));
+						tmp.SetValue(TJS_W("url"),       ttstr(item.url.c_str()));
+						tmp.SetValue(TJS_W("target"),    ttstr(item.target.c_str()));
+						tmp.SetValue(TJS_W("message"),   ttstr(item.message.c_str()));
+						tmp.SetValue(TJS_W("alt_tag"),   ttstr(item.altTag.c_str()));
+						tmp.SetValue(TJS_W("cell_text"), ttstr(item.cellText.c_str()));
 						arr.SetValue((tjs_int32)i, tmp.GetDispatch());
 					}
 				}
-				dict.SetValue(L"slices", arr.GetDispatch());
+				dict.SetValue(TJS_W("slices"), arr.GetDispatch());
 			}
 			result = dict;
 		}
@@ -500,17 +500,17 @@ PSD::getSlices()
 tTJSVariant
 PSD::getGuides()
 {
-	if (!isLoaded) TVPThrowExceptionMessage(L"no data");
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
 	tTJSVariant result;
 	ncbDictionaryAccessor dict;
 	ncbArrayAccessor vert, horz;
 	if (gridGuide.isEnabled) {
 		psd::GridGuideResource gg = gridGuide;
 		if (dict.IsValid() && vert.IsValid() && horz.IsValid()) {
-			dict.SetValue(L"horz_grid",  gg.horizontalGrid);
-			dict.SetValue(L"vert_grid",  gg.verticalGrid);
-			dict.SetValue(L"vertical",   vert.GetDispatch());
-			dict.SetValue(L"horizontal", horz.GetDispatch());
+			dict.SetValue(TJS_W("horz_grid"),  gg.horizontalGrid);
+			dict.SetValue(TJS_W("vert_grid"),  gg.verticalGrid);
+			dict.SetValue(TJS_W("vertical"),   vert.GetDispatch());
+			dict.SetValue(TJS_W("horizontal"), horz.GetDispatch());
 			for (int i = 0, v = 0, h = 0; i < (int)gg.guides.size(); i++) {
 				if (gg.guides[i].direction == 0) {
 					vert.SetValue(v++, gg.guides[i].location);
@@ -533,8 +533,8 @@ PSD::getGuides()
  */
 bool
 PSD::getBlend(tTJSVariant layer) {
-	if (!layer.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, L"Layer", NULL)) {
-		TVPThrowExceptionMessage(L"not layer");
+	if (!layer.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, TJS_W("Layer"), NULL)) {
+		TVPThrowExceptionMessage(TJS_W("not layer"));
 	}
 
 	// 合成結果を生成
@@ -542,16 +542,16 @@ PSD::getBlend(tTJSVariant layer) {
 
 		// 格納先を調整
 		ncbPropAccessor obj(layer);
-		obj.SetValue(L"width",  get_width());
-		obj.SetValue(L"height", get_height());
-		obj.SetValue(L"imageLeft",  0);
-		obj.SetValue(L"imageTop",   0);
-		obj.SetValue(L"imageWidth",  get_width());
-		obj.SetValue(L"imageHeight", get_height());
+		obj.SetValue(TJS_W("width"),  get_width());
+		obj.SetValue(TJS_W("height"), get_height());
+		obj.SetValue(TJS_W("imageLeft"),  0);
+		obj.SetValue(TJS_W("imageTop"),   0);
+		obj.SetValue(TJS_W("imageWidth"),  get_width());
+		obj.SetValue(TJS_W("imageHeight"), get_height());
 
 		// 画像データのコピー
-		unsigned char *buffer = (unsigned char*)obj.GetValue(L"mainImageBufferForWrite", ncbTypedefs::Tag<tjs_intptr_t>());
-		int pitch = obj.GetValue(L"mainImageBufferPitch", ncbTypedefs::Tag<tjs_int>());
+		unsigned char *buffer = (unsigned char*)obj.GetValue(TJS_W("mainImageBufferForWrite"), ncbTypedefs::Tag<tjs_intptr_t>());
+		int pitch = obj.GetValue(TJS_W("mainImageBufferPitch"), ncbTypedefs::Tag<tjs_int>());
 		getMergedImage(buffer, psd::BGRA_LE, pitch);
 
 		return true;
@@ -566,29 +566,29 @@ PSD::getBlend(tTJSVariant layer) {
 tTJSVariant
 PSD::getLayerComp()
 {
-	if (!isLoaded) TVPThrowExceptionMessage(L"no data");
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
 	tTJSVariant result;
 	ncbDictionaryAccessor dict;
 	ncbArrayAccessor arr;
 	int compNum = layerComps.size();
 	if (compNum > 0) {
 		if (dict.IsValid()) {
-			dict.SetValue(L"last_applied_id", lastAppliedCompId);
+			dict.SetValue(TJS_W("last_applied_id"), lastAppliedCompId);
 			if (arr.IsValid()) {
 				for (int i = 0; i < compNum; i++) {
 					ncbDictionaryAccessor tmp;
 					if (tmp.IsValid()) {
 						psd::LayerComp &comp = layerComps[i];
-						tmp.SetValue(L"id",      	        comp.id);
-						tmp.SetValue(L"record_visibility", comp.isRecordVisibility);
-						tmp.SetValue(L"record_position",   comp.isRecordPosition);
-						tmp.SetValue(L"record_appearance", comp.isRecordAppearance);
-						tmp.SetValue(L"name",             ttstr(comp.name.c_str()));
-						tmp.SetValue(L"comment",          ttstr(comp.comment.c_str()));
+						tmp.SetValue(TJS_W("id"),      	        comp.id);
+						tmp.SetValue(TJS_W("record_visibility"), comp.isRecordVisibility);
+						tmp.SetValue(TJS_W("record_position"),   comp.isRecordPosition);
+						tmp.SetValue(TJS_W("record_appearance"), comp.isRecordAppearance);
+						tmp.SetValue(TJS_W("name"),             ttstr(comp.name.c_str()));
+						tmp.SetValue(TJS_W("comment"),          ttstr(comp.comment.c_str()));
 						arr.SetValue((tjs_int32)i,        tmp.GetDispatch());
 					}
 				}
-				dict.SetValue(L"comps", arr.GetDispatch());
+				dict.SetValue(TJS_W("comps"), arr.GetDispatch());
 			}
 			result = dict;
 		}
@@ -666,13 +666,13 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 	const tjs_char *p = filename.c_str();
 
 	// id指定の場合
-	if (wcsncmp(p, L"id/", 3) == 0) {
+	if (wcsncmp(p, TJS_W("id/"), 3) == 0) {
 
 		p += 3;
 
 		// 拡張子を除去して判定
 		const tjs_char *q;
-		if (!(q = wcsrchr(p, '/')) && ((q = wcschr(p, '.')) && (wcscmp(q, BMPEXT) == 0))) {
+		if (!(q = wcsrchr(p, '/')) && ((q = TJS_strchr(p, '.')) && (wcscmp(q, BMPEXT) == 0))) {
 			ttstr name = ttstr(p, q-p);
 			q = name.c_str();
 			if (checkAllNum(q)) { // 文字混入禁止
@@ -702,7 +702,7 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 		ttstr basename;
 		p = fname.c_str();
 		// 最初の . を探す
-		if ((q = wcschr(p, '.')) && (wcscmp(q, BMPEXT) == 0)) {
+		if ((q = TJS_strchr(p, '.')) && (wcscmp(q, BMPEXT) == 0)) {
 			basename = ttstr(p, q-p);
 		} else {
 			return false;
@@ -832,7 +832,7 @@ PSD::openLayerImage(const ttstr &name)
  */
 int PSD::assignAutoIds(int base_id)
 {
-	if (!isLoaded) TVPThrowExceptionMessage(L"no data");
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
 	size_t count = layerList.size();
 	int min_id = -1;
 	typedef std::vector<psd::LayerInfo> LayerVec;

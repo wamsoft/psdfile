@@ -175,7 +175,7 @@ namespace psd {
       int size = getInt32(true);
       str.clear();
       for (int i = 0; i < size; i++) {
-        str.push_back((wchar_t)getInt16(convToNative));
+        str.push_back((tjs_char)getInt16(convToNative));
       }
     }
     virtual int size() {

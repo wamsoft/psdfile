@@ -6,7 +6,7 @@
 // ストレージ機能
 // -----------------------------------------------------------------------------
 
-#define BASENAME L"psd"
+#define BASENAME TJS_W("psd")
 
 /**
  * PSDストレージ
@@ -166,7 +166,7 @@ protected:
 		ttstr dname;
 		const tjs_char *p = name.c_str();
 		const tjs_char *q;
-		if ((q = wcschr(p, '/'))) {
+		if ((q = TJS_strchr(p, '/'))) {
 			dname = ttstr(p, q-p);
 			fname = ttstr(q+1);
 		} else {
@@ -191,7 +191,7 @@ protected:
 		}
 
 		// 自分でopenしてそのままキャッシュとして持つ
-		TVPExecuteExpression(L"new PSD()", &cache);
+		TVPExecuteExpression(TJS_W("new PSD()"), &cache);
 		psd = ncbInstanceAdaptor<PSD>::GetNativeInstance(cache.AsObjectNoAddRef());
 		if (psd) {
 			if (psd->load(dname)) {
