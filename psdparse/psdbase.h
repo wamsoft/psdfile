@@ -9,6 +9,10 @@
 #define dprint(...) ((void)0)
 #endif
 
+#ifndef _MSC_VER
+  #include <stdint.h>
+#endif
+
 namespace psd {
 #ifdef _MSC_VER
 #ifndef _STDINT
@@ -21,8 +25,6 @@ namespace psd {
   typedef __int64 int64_t;
   typedef unsigned __int64 uint64_t;
 #endif
-#else
-  #include <stdint.h>
 #endif
 
   typedef float  float32_t;
