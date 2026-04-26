@@ -133,8 +133,7 @@ PSD::load(ttstr filename)
 {
 	ttstr file = TVPGetPlacedPath(filename);
 	if (!file.length()) {
-		// 見つからなかったのでローカルパスとみなして読み込む
-		psd::PSDFile::load(filename.c_str());
+		return false;
 	} else {
 #ifdef LOAD_MEMORY
 		if (!TJS_strchr(file.c_str(), '>')) {
@@ -240,7 +239,7 @@ PSD::getLayerInfo(int no)
 	tTJSVariant result;	
 	ncbDictionaryAccessor dict;
 	if (dict.IsValid()) {
-#define SETPROP(dict, obj, prop) dict.SetValue(L ## #prop, obj.prop)
+#define SETPROP(dict, obj, prop) dict.SetValue(TJS_W(#prop), obj.prop)
 		SETPROP(dict, lay, top);
 		SETPROP(dict, lay, left);
 		SETPROP(dict, lay, bottom);

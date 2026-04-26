@@ -27,6 +27,7 @@ add_library(${PROJECT_NAME} STATIC
 
 target_include_directories(${PROJECT_NAME} PUBLIC
 	${Boost_INCLUDE_DIRS}
+	${TPSTUB_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC

@@ -9,9 +9,6 @@
 #define _WIN32_WINNT 0x0501	// これを Windows の他のバージョン向けに適切な値に変更してください。
 #endif				
 
-#include <stdio.h>
-#include <tchar.h>
-
 // TODO: プログラムに必要な追加ヘッダーをここで参照してください。
 #include <string>
 #include <vector>

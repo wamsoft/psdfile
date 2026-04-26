@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "psddata.h"
+#include  <tp_stub.h>
 
 namespace psd {
 
@@ -171,7 +172,7 @@ namespace psd {
 		virtual bool eoi() {
 			return cur == range.end();
 		}
-    virtual void getUnicodeString(std::wstring &str, bool convToNative=true) {
+    virtual void getUnicodeString(tjs_string &str, bool convToNative=true) {
       int size = getInt32(true);
       str.clear();
       for (int i = 0; i < size; i++) {

@@ -180,8 +180,8 @@ namespace psd {
     bool isRecordVisibility;
     bool isRecordPosition;
     bool isRecordAppearance;
-    std::wstring name;
-    std::wstring comment;
+    tjs_string name;
+    tjs_string comment;
   };
 
   // レイヤーごとのレイヤーカンプ情報
@@ -198,18 +198,18 @@ namespace psd {
     int groupId;
     int origin;
     int associatedLayerId; // Only present if Origin = 1
-    std::wstring name;
+    tjs_string name;
     int type;
     int left;
     int top;
     int right;
     int bottom;
-    std::wstring url;
-    std::wstring target;
-    std::wstring message;
-    std::wstring altTag;
+    tjs_string url;
+    tjs_string target;
+    tjs_string message;
+    tjs_string altTag;
     bool isCellTextHtml;
-    std::wstring cellText;
+    tjs_string cellText;
     int horizontalAlign;
     int verticalAlign;
     uint8_t colorA;
@@ -227,7 +227,7 @@ namespace psd {
     int boundingTop;
     int boundingRight;
     int boundingBottom;
-    std::wstring groupName;
+    tjs_string groupName;
     std::vector<SliceItem> slices;
   };
 
@@ -395,7 +395,7 @@ namespace psd {
     int layerId;
     LayerType layerType;
 		std::string layerName;
-    std::wstring layerNameUnicode;
+    tjs_string layerNameUnicode;
     // int layerNameId;
     // int foreignEffectId;
     // BlendMode folderBlendMode; // blendMode 上書きにしている。問題あれば分離

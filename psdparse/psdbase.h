@@ -1,6 +1,7 @@
 #ifndef __psdbase_h__
 #define __psdbase_h__
 
+#include <tp_stub.h>
 #include <string>
 
 #ifdef _DEBUG
@@ -68,7 +69,7 @@ namespace psd {
 		virtual int64_t getInt64(bool convToNative=true) = 0;
 		virtual int getData(void *buffer, int size) = 0;
 		virtual bool eoi() = 0;
-    virtual void getUnicodeString(std::wstring &str, bool convToNative=true) = 0;
+    virtual void getUnicodeString(tjs_string &str, bool convToNative=true) = 0;
     virtual int size() = 0;
     virtual int rest() = 0;
     virtual void advance(int size) = 0;
