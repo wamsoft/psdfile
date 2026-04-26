@@ -86,7 +86,7 @@ public:
  */
 PSD::PSD(iTJSDispatch2 *objthis) : objthis(objthis)
 #ifdef LOAD_MEMORY
-, hBuffer(0)
+, mBuffer(0)
 #else
 , pStream(0)
 , mStreamSize(0)
@@ -666,17 +666,17 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 	const tjs_char *p = filename.c_str();
 
 	// id指定の場合
-	if (wcsncmp(p, TJS_W("id/"), 3) == 0) {
+	if (TJS_strncmp(p, TJS_W("id/"), 3) == 0) {
 
 		p += 3;
 
 		// 拡張子を除去して判定
 		const tjs_char *q;
-		if (!(q = wcsrchr(p, '/')) && ((q = TJS_strchr(p, '.')) && (wcscmp(q, BMPEXT) == 0))) {
+		if (!(q = TJS_strrchr(p, '/')) && ((q = TJS_strchr(p, '.')) && (TJS_strcmp(q, BMPEXT) == 0))) {
 			ttstr name = ttstr(p, q-p);
 			q = name.c_str();
 			if (checkAllNum(q)) { // 文字混入禁止
-				int id = _wtoi(q);
+				int id = TJS_atoi(q);
 				LayerIdIdxMap::const_iterator n = layerIdIdxMap.find(id);
 				if (n != layerIdIdxMap.end()) {
 					if (layerIdxRet) *layerIdxRet = n->second;
@@ -691,7 +691,7 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 		ttstr pname, fname;
 		// 最後の/を探す
 		const tjs_char *q;
-		if ((q = wcsrchr(p, '/'))) {
+		if ((q = TJS_strrchr(p, '/'))) {
 			pname = ttstr(p, q-p+1);
 			fname = ttstr(q+1);
 		} else {
@@ -702,7 +702,7 @@ PSD::CheckExistentStorage(const ttstr &filename, int *layerIdxRet)
 		ttstr basename;
 		p = fname.c_str();
 		// 最初の . を探す
-		if ((q = TJS_strchr(p, '.')) && (wcscmp(q, BMPEXT) == 0)) {
+		if ((q = TJS_strchr(p, '.')) && (TJS_strcmp(q, BMPEXT) == 0)) {
 			basename = ttstr(p, q-p);
 		} else {
 			return false;
@@ -758,11 +758,49 @@ PSD::GetListAt(const ttstr &pathname, iTVPStorageLister *lister)
 }
 
 /*
+ * メモリ上のBMPデータを返す iTJSBinaryStream 実装
+ */
+namespace {
+class PSDMemoryStream : public iTJSBinaryStream {
+	unsigned char *buf;
+	tjs_uint64 size;
+	tjs_uint64 pos;
+public:
+	PSDMemoryStream(unsigned char *buf, tjs_uint64 size) : buf(buf), size(size), pos(0) {}
+	virtual ~PSDMemoryStream() { delete[] buf; }
+
+	virtual tjs_uint64 TJS_INTF_METHOD Seek(tjs_int64 offset, tjs_int whence) {
+		tjs_int64 newpos;
+		switch (whence) {
+		case TJS_BS_SEEK_SET: newpos = offset; break;
+		case TJS_BS_SEEK_CUR: newpos = (tjs_int64)pos + offset; break;
+		case TJS_BS_SEEK_END: newpos = (tjs_int64)size + offset; break;
+		default: return pos;
+		}
+		if (newpos < 0) newpos = 0;
+		if ((tjs_uint64)newpos > size) newpos = (tjs_int64)size;
+		pos = (tjs_uint64)newpos;
+		return pos;
+	}
+	virtual tjs_uint TJS_INTF_METHOD Read(void *buffer, tjs_uint read_size) {
+		tjs_uint64 avail = size - pos;
+		if ((tjs_uint64)read_size > avail) read_size = (tjs_uint)avail;
+		if (read_size) memcpy(buffer, buf + pos, read_size);
+		pos += read_size;
+		return read_size;
+	}
+	virtual tjs_uint TJS_INTF_METHOD Write(const void *, tjs_uint) { return 0; }
+	virtual void TJS_INTF_METHOD SetEndOfStorage() {}
+	virtual tjs_uint64 TJS_INTF_METHOD GetSize() { return size; }
+};
+}
+
+/*
  * 指定した名前のレイヤの画像ファイルをストリームで返す
  * @param name パスを含むレイヤ名
  * @return ファイルストリーム
  */
-IStream *
+iTJSBinaryStream *
 PSD::openLayerImage(const ttstr &name)
 {
 	static int n=0;
@@ -783,42 +821,33 @@ PSD::openLayerImage(const ttstr &name)
 			int isize = hsize + sizeof(BITMAPINFOHEADER);
 			int size  = isize  + pitch * height;
 
-			// グローバルヒープにBMP画像を作成してストリームとして返す
-			HGLOBAL handle = ::GlobalAlloc(GMEM_MOVEABLE, size);
-			if (handle) {
-				unsigned char *p = (unsigned char*)::GlobalLock(handle);
-				if (p) {
+			// メモリ上にBMP画像を作成してストリームとして返す
+			unsigned char *p = new unsigned char[size];
+			if (p) {
+				BITMAPFILEHEADER bfh;
+				bfh.bfType      = 'B' + ('M' << 8);
+				bfh.bfSize      = size;
+				bfh.bfReserved1 = 0;
+				bfh.bfReserved2 = 0;
+				bfh.bfOffBits   = isize;
+				memcpy(p,        &bfh, sizeof bfh);
 
-					BITMAPFILEHEADER bfh;
-					bfh.bfType      = 'B' + ('M' << 8);
-					bfh.bfSize      = size;
-					bfh.bfReserved1 = 0;
-					bfh.bfReserved2 = 0;
-					bfh.bfOffBits   = isize;
-					memcpy(p,        &bfh, sizeof bfh);
+				BITMAPINFOHEADER bih;
+				bih.biSize = sizeof(bih);
+				bih.biWidth = width;
+				bih.biHeight = height;
+				bih.biPlanes = 1;
+				bih.biBitCount = 32;
+				bih.biCompression = BI_RGB;
+				bih.biSizeImage = 0;
+				bih.biXPelsPerMeter = 0;
+				bih.biYPelsPerMeter = 0;
+				bih.biClrUsed = 0;
+				bih.biClrImportant = 0;
+				memcpy(p + hsize, &bih, sizeof bih);
+				getLayerImage(lay, p + isize + pitch * (height - 1), psd::BGRA_LE, -pitch, psd::IMAGE_MODE_MASKEDIMAGE);
 
-					BITMAPINFOHEADER bih;
-					bih.biSize = sizeof(bih);
-					bih.biWidth = width;
-					bih.biHeight = height;
-					bih.biPlanes = 1;
-					bih.biBitCount = 32;
-					bih.biCompression = BI_RGB;
-					bih.biSizeImage = 0;
-					bih.biXPelsPerMeter = 0;
-					bih.biYPelsPerMeter = 0;
-					bih.biClrUsed = 0;
-					bih.biClrImportant = 0;
-					memcpy(p + hsize, &bih, sizeof bih);
-					getLayerImage(lay, p + isize + pitch * (height - 1), psd::BGRA_LE, -pitch, psd::IMAGE_MODE_MASKEDIMAGE);
-					::GlobalUnlock(handle);
-
-					IStream *pStream = 0;
-					if (SUCCEEDED(::CreateStreamOnHGlobal(handle, TRUE, &pStream))) {
-						return pStream;
-					}
-				}
-				::GlobalFree(handle);
+				return new PSDMemoryStream(p, (tjs_uint64)size);
 			}
 		}
 	}

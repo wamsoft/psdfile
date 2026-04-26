@@ -151,12 +151,12 @@ protected:
 	ttstr dname; ///< 登録用ベース名
 
 #ifdef LOAD_MEMORY
-	HGLOBAL hBuffer; // オンメモリ保持用ハンドル
+	unsigned char *mBuffer; // オンメモリ保持用バッファ
 	bool loadMemory(const ttstr &filename);
 	void clearMemory();
 #else
 	// ストリームから読み込み
-	IStream *pStream;
+	iTJSBinaryStream *pStream;
 	tTVInteger mStreamSize;
 	bool loadStream(const ttstr &filename);
 	void clearStream();
@@ -165,7 +165,7 @@ protected:
 
 	//< PSDファイル読み込みキャッシュ用バッファ
 	tTVInteger mBufferPos;
-	ULONG mBufferSize;
+	tjs_uint mBufferSize;
 	unsigned char mBuffer[4*1024];
 #endif
 	
@@ -221,7 +221,7 @@ protected:
 	 * @param name パスを含むレイヤ名
 	 * @return ファイルストリーム
 	 */
-	IStream *openLayerImage(const ttstr &name);
+	iTJSBinaryStream *openLayerImage(const ttstr &name);
 	
 	// パス名記録用
 

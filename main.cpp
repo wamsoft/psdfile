@@ -113,11 +113,9 @@ public:
 			ttstr fname;
 			PSD *psd = getPSD(name, fname);
 			if (psd) {
-				IStream *stream = psd->openLayerImage(fname);
+				iTJSBinaryStream *stream = psd->openLayerImage(fname);
 				if (stream) {
-					iTJSBinaryStream *ret = TVPCreateBinaryStreamAdapter(stream);
-					stream->Release();
-					return ret;
+					return stream;
 				}
 			}
 		}
@@ -224,7 +222,7 @@ PSD::addToStorage(const ttstr &filename)
 	// 登録用ベース名を生成
 	const tjs_char *p = filename.c_str();
 	const tjs_char *q;
-	if ((q = wcsrchr(p, '/'))) {
+	if ((q = TJS_strrchr(p, '/'))) {
 		dname = ttstr(q+1);
 	} else {
 		dname = filename;

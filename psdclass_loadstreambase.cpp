@@ -6,7 +6,7 @@ void
 PSD::clearStream()
 {
 	if (pStream) {
-		pStream->Release();
+		pStream->Destruct();
 		pStream = 0;
 	}
 	mStreamSize = 0;
@@ -24,10 +24,8 @@ PSD::getStreamValue(const tTVInteger &pos)
 			return mBuffer[pos - mBufferPos];
 		}
 		mBufferPos = pos;
-		LARGE_INTEGER n;
-		n.QuadPart = pos;
-		pStream->Seek(n, STREAM_SEEK_SET, 0);
-		pStream->Read(mBuffer, sizeof mBuffer, &mBufferSize);
+		pStream->Seek((tjs_int64)pos, TJS_BS_SEEK_SET);
+		mBufferSize = pStream->Read(mBuffer, sizeof mBuffer);
 		return mBuffer[0];
 	}
 	return eof;
@@ -43,19 +41,14 @@ PSD::copyToBuffer(uint8_t *buf, tTVInteger pos, int size)
 				return;
 			}
 			mBufferPos = pos;
-			LARGE_INTEGER n;
-			n.QuadPart = pos;
-			pStream->Seek(n, STREAM_SEEK_SET, 0);
-			pStream->Read(mBuffer, sizeof mBuffer, &mBufferSize);
+			pStream->Seek((tjs_int64)pos, TJS_BS_SEEK_SET);
+			mBufferSize = pStream->Read(mBuffer, sizeof mBuffer);
 			memcpy(buf, mBuffer, size);
 			return;
 		}
 		// 直接読み込む
-		LARGE_INTEGER n;
-		n.QuadPart = pos;
-		pStream->Seek(n, STREAM_SEEK_SET, 0);
-		ULONG rsize;
-		pStream->Read(buf, size, &rsize);
+		pStream->Seek((tjs_int64)pos, TJS_BS_SEEK_SET);
+		pStream->Read(buf, size);
 	}
 }
 

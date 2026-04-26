@@ -7,10 +7,9 @@
 void
 PSD::clearMemory()
 {
-	if (hBuffer) {
-		::GlobalUnlock(hBuffer);
-		::GlobalFree(hBuffer);
-		hBuffer = 0;
+	if (mBuffer) {
+		delete[] mBuffer;
+		mBuffer = 0;
 	}
 }
 
@@ -21,22 +20,18 @@ PSD::loadMemory(const ttstr &filename)
 
 	// まるごとメモリに読み込んで処理
 	isLoaded = false;
-	IStream *stream = TVPCreateIStream(filename, TJS_BS_READ);
+	iTJSBinaryStream *stream = TVPCreateStream(filename, TJS_BS_READ);
 	if (stream) {
 		try {
 			// 全部メモリに読み込む
-			STATSTG stat;
-			stream->Stat(&stat, STATFLAG_NONAME);
-			tjs_uint64 qsize = (tjs_uint64)stat.cbSize.QuadPart;
+			tjs_uint64 qsize = stream->GetSize();
 			if (qsize < 0xFFFFFFFF) {
-				DWORD size = (DWORD)qsize;
-				hBuffer = ::GlobalAlloc(GMEM_MOVEABLE, size);
-				unsigned char* pBuffer = (unsigned char*)::GlobalLock(hBuffer);
-				if (pBuffer) {
-					ULONG retsize;
-					stream->Read(pBuffer, size, &retsize);
+				tjs_uint size = (tjs_uint)qsize;
+				mBuffer = new unsigned char[size];
+				if (mBuffer) {
+					stream->Read(mBuffer, size);
 					psd::Parser<unsigned char*> parser(*this);
-					unsigned char *begin = pBuffer;
+					unsigned char *begin = mBuffer;
 					unsigned char *end   = begin + size;
 					bool r = parse(begin , end,  parser);
 					if (r && begin == end) {
@@ -50,12 +45,12 @@ PSD::loadMemory(const ttstr &filename)
 			}
 		} catch(...) {
 			clearData();
-			stream->Release();
+			stream->Destruct();
 			throw;
 		}
-		stream->Release();
+		stream->Destruct();
 	}
-	return isLoaded;	
+	return isLoaded;
 }
 
 #endif

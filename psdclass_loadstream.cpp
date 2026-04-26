@@ -170,12 +170,10 @@ PSD::loadStream(const ttstr &filename)
 
 	// ストリームのまま
 	isLoaded = false;
-	pStream = TVPCreateIStream(filename, TJS_BS_READ);
+	pStream = TVPCreateStream(filename, TJS_BS_READ);
 	if (pStream) {
 
-		STATSTG stat;
-		pStream->Stat(&stat, STATFLAG_NONAME);
-		mStreamSize = stat.cbSize.QuadPart;
+		mStreamSize = (tTVInteger)pStream->GetSize();
 
 		PSDIterator begin(this, true);
 		PSDIterator end(this, false);
