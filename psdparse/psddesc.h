@@ -137,8 +137,8 @@ namespace psd {
     }
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent=0) {
-      dprint("Descriptor (size:%d, class:%s, name:%ls)\n",
-             itemCount(), classId.c_str(), name.c_str());
+      dprint("Descriptor (size:%d, class:%s, name:<u16>[%d])\n",
+             itemCount(), classId.c_str(), (int)name.size());
       int i = 0;
       for (ItemMap::iterator it = itemMap.begin(); it != itemMap.end(); it++, i++)	{
         indent_print(indent+1, "[%s] ", it->first.c_str());
@@ -187,7 +187,7 @@ namespace psd {
       return _finder(itemMap, key);
     }
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
     ItemMap      itemMap;
   };
@@ -300,10 +300,10 @@ namespace psd {
     DescriptorString() : DescriptorItem(TYPE_STRING) {}
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (val:%ls)\n", typeName(), val.c_str());
+      dprint("%s (val:<u16>[%d])\n", typeName(), (int)val.size());
     }
 
-    tjs_string val;
+    u16str val;
   };
   
   struct DescriptorEnumerated : DescriptorItem {
@@ -342,11 +342,11 @@ namespace psd {
     DescriptorClass(DescriptorType type) : DescriptorItem(type) {}
     virtual bool load(IteratorBase *data);
     virtual void dump(int indent) {
-      dprint("%s (name:%ls, class:%s)\n",
-             typeName(), name.c_str(), classId.c_str());
+      dprint("%s (name:<u16>[%d], class:%s)\n",
+             typeName(), (int)name.size(), classId.c_str());
     }
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
   };
 
@@ -378,7 +378,7 @@ namespace psd {
     ReferenceProperty() : ReferenceItem(REF_TYPE_PROPERTY) {}
     virtual bool load(IteratorBase *data);
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
     std::string  keyId;
   };
@@ -387,7 +387,7 @@ namespace psd {
     ReferenceClass() : ReferenceItem(REF_TYPE_CLASS) {}
     virtual bool load(IteratorBase *data);
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
   };
 
@@ -395,7 +395,7 @@ namespace psd {
     ReferenceEnumRef() : ReferenceItem(REF_TYPE_ENUM_REF) {}
     virtual bool load(IteratorBase *data);
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
     std::string  typeId;
     std::string  enumId;
@@ -405,7 +405,7 @@ namespace psd {
     ReferenceOffset() : ReferenceItem(REF_TYPE_OFFSET) {}
     virtual bool load(IteratorBase *data);
 
-    tjs_string name;
+    u16str name;
     std::string  classId;
     int          offset;
   };
@@ -428,7 +428,7 @@ namespace psd {
     ReferenceName() : ReferenceItem(REF_TYPE_NAME) {}
     virtual bool load(IteratorBase *data);
 
-    tjs_string name;
+    u16str name;
   };
 
 } // namespace psd

@@ -306,4 +306,282 @@ Data::getLayerById(int layerId)
   return 0;
 }
 
+// ===========================================================================
+// hand-rolled binary parser (replacement for the Boost.Spirit grammar)
+// ===========================================================================
+
+namespace {
+
+// RAII helper: open a size-prefixed sub-block. The sub IteratorBase is
+// strictly bounded to [outer.pos, outer.pos+blockSize) via cloneRange so that
+// sub-parsers cannot bleed past the declared size even if internal length
+// fields are garbage. When the SubBlock goes out of scope, outer advances by
+// exactly blockSize regardless of what the sub consumed.
+class SubBlock {
+public:
+  SubBlock(IteratorBase &outer, int blockSize)
+    : outer_(&outer), sub_(nullptr), size_(blockSize) {
+    if (size_ < 0) size_ = 0;
+    sub_ = outer.cloneRange(0, size_);
+  }
+  ~SubBlock() {
+    delete sub_;
+    outer_->advance(size_);
+  }
+  SubBlock(const SubBlock&) = delete;
+  SubBlock& operator=(const SubBlock&) = delete;
+  IteratorBase &reader() { return *sub_; }
+  int size() const { return size_; }
+private:
+  IteratorBase *outer_;
+  IteratorBase *sub_;
+  int size_;
+};
+
+inline bool matchSig(IteratorBase &r, const char *sig4) {
+  char buf[4];
+  if (r.getData(buf, 4) != 4) return false;
+  return std::memcmp(buf, sig4, 4) == 0;
+}
+
+bool parseHeader(IteratorBase &r, Header &h) {
+  if (!matchSig(r, "8BPS")) return false;
+  h.version  = r.getInt16(true);
+  r.advance(6); // reserved
+  h.channels = r.getInt16(true);
+  h.height   = r.getInt32(true);
+  h.width    = r.getInt32(true);
+  h.depth    = r.getInt16(true);
+  h.mode     = r.getInt16(true);
+  return true;
+}
+
+void parseColorModeData(IteratorBase &r, Data &data) {
+  uint32_t size = (uint32_t)r.getInt32(true);
+  data.colorModeSize = (int)size;
+  if (size > 0) {
+    data.colorModeIterator = r.cloneOffset(0);
+    r.advance((int)size);
+  }
+}
+
+// イメージリソース 1 件。8BIM 以外で始まったら false を返して呼び出し側がループを止める。
+bool parseOneImageResource(IteratorBase &r, Data &data) {
+  if (r.rest() < 11) return false;
+  char sig[4];
+  r.getData(sig, 4);
+  if (std::memcmp(sig, "8BIM", 4) != 0) return false;
+  uint16_t id = (uint16_t)r.getInt16(true);
+  int nameLen = r.getCh();
+  if (nameLen < 0) nameLen = 0;
+  std::vector<char> nameBuf((size_t)nameLen);
+  if (nameLen > 0) r.getData(nameBuf.data(), nameLen);
+  // pascal string (1 length byte + chars) padded to make total even
+  int namePad = (nameLen & 1) ? 0 : 1;
+  r.advance(namePad);
+  uint32_t dataSize   = (uint32_t)r.getInt32(true);
+  int avail = r.rest();
+  if (dataSize > (uint32_t)avail) dataSize = (uint32_t)avail;
+  uint32_t paddedSize = (dataSize + 1u) & ~1u;
+  if (paddedSize > (uint32_t)avail) paddedSize = (uint32_t)avail;
+  std::string nameStr;
+  if (nameLen > 0) nameStr.assign(nameBuf.data(), (size_t)nameLen);
+  ImageResourceInfo info(id, nameStr, (int)dataSize,
+                         r.cloneRange(0, (int)dataSize));
+  data.imageResourceList.push_back(info);
+  r.advance((int)paddedSize);
+  return true;
+}
+
+void parseImageResources(IteratorBase &outer, Data &data) {
+  uint32_t totalSize = (uint32_t)outer.getInt32(true);
+  if (totalSize == 0) return;
+  SubBlock blk(outer, (int)totalSize);
+  IteratorBase &r = blk.reader();
+  while (r.rest() > 0) {
+    int before = r.rest();
+    if (!parseOneImageResource(r, data)) break;
+    if (r.rest() >= before) break; // no progress -- bail
+  }
+}
+
+void parseLayerMask(IteratorBase &r, LayerMask &m, int size) {
+  if (size <= 0) { std::memset(&m, 0, sizeof(LayerMask)); return; }
+  m.top    = r.getInt32(true);
+  m.left   = r.getInt32(true);
+  m.bottom = r.getInt32(true);
+  m.right  = r.getInt32(true);
+  m.defaultColor = r.getCh();
+  m.flags        = r.getCh();
+  // The spec says one filler byte here on size==20.  At size>20 the next byte
+  // is realFlags; the original grammar consumed a byte before realFlags too.
+  (void)r.getCh();
+  if (size > 20) {
+    m.realFlags              = r.getCh();
+    m.realUserMaskBackground = r.getCh();
+    m.enclosingTop           = r.getInt32(true);
+    m.enclosingLeft          = r.getInt32(true);
+    m.enclosingBottom        = r.getInt32(true);
+    m.enclosingRight         = r.getInt32(true);
+  }
+  m.width  = m.right  - m.left;
+  m.height = m.bottom - m.top;
+}
+
+void parseLayerBlendingRange(IteratorBase &r, LayerBlendingRange &b) {
+  b.grayBlendSource = r.getInt32(true);
+  b.grayBlendDest   = r.getInt32(true);
+  while (r.rest() >= 8) {
+    LayerBlendingChannel ch;
+    ch.source = r.getInt32(true);
+    ch.dest   = r.getInt32(true);
+    b.channels.push_back(ch);
+  }
+}
+
+void parseLayerExtraData(IteratorBase &r, LayerExtraData &ex) {
+  // layer mask
+  {
+    uint32_t s = (uint32_t)r.getInt32(true);
+    SubBlock blk(r, (int)s);
+    parseLayerMask(blk.reader(), ex.layerMask, (int)s);
+  }
+  // layer blending ranges
+  {
+    uint32_t s = (uint32_t)r.getInt32(true);
+    SubBlock blk(r, (int)s);
+    if (s > 0) parseLayerBlendingRange(blk.reader(), ex.layerBlendingRange);
+    else       std::memset(&ex.layerBlendingRange, 0, sizeof(LayerBlendingRange));
+  }
+  // layer name (pascal string padded to 4-byte boundary including length byte)
+  {
+    int nameLen = r.getCh();
+    if (nameLen < 0) nameLen = 0;
+    std::vector<char> buf((size_t)nameLen);
+    if (nameLen > 0) {
+      r.getData(buf.data(), nameLen);
+      ex.layerName.assign(buf.data(), (size_t)nameLen);
+    }
+    int total = 1 + nameLen;
+    int pad = (4 - (total & 3)) & 3;
+    r.advance(pad);
+  }
+  // additional layer info entries. Bail if a malformed entry would not make
+  // forward progress -- this prevents infinite loops on garbage input.
+  while (r.rest() >= 12) {
+    int posBefore = r.size() - r.rest();
+    char sig[4];
+    r.getData(sig, 4);
+    int sigType;
+    if (std::memcmp(sig, "8BIM", 4) == 0)      sigType = 0;
+    else if (std::memcmp(sig, "8B64", 4) == 0) sigType = 1;
+    else break;
+    int key = r.getInt32(true);
+    uint32_t dataSize = (uint32_t)r.getInt32(true);
+    int avail = r.rest();
+    if (dataSize > (uint32_t)avail) dataSize = (uint32_t)avail;
+    ex.additionalLayers.push_back(
+        AdditionalLayerInfo(sigType, key, (int)dataSize,
+                            r.cloneRange(0, (int)dataSize)));
+    r.advance((int)dataSize);
+    int posAfter = r.size() - r.rest();
+    if (posAfter <= posBefore) break;
+  }
+}
+
+void parseLayerRecord(IteratorBase &r, Data &data) {
+  data.layerList.push_back(LayerInfo());
+  LayerInfo &lay = data.layerList.back();
+  lay.top    = r.getInt32(true);
+  lay.left   = r.getInt32(true);
+  lay.bottom = r.getInt32(true);
+  lay.right  = r.getInt32(true);
+  lay.width  = lay.right  - lay.left;
+  lay.height = lay.bottom - lay.top;
+  uint16_t channelCount = (uint16_t)r.getInt16(true);
+  for (uint16_t i = 0; i < channelCount; i++) {
+    int16_t  id  = r.getInt16(true);
+    int32_t  len = r.getInt32(true);
+    lay.channels.push_back(ChannelInfo(id, len));
+  }
+  char sig[4];
+  r.getData(sig, 4); // "8BIM"
+  // blend mode key is 4 ASCII bytes; reading as BE int yields the multichar
+  // literal value (e.g. 'norm' = 0x6E6F726D) regardless of host endianness.
+  lay.blendModeKey = r.getInt32(true);
+  lay.blendMode    = blendKeyToMode(lay.blendModeKey);
+  lay.opacity      = r.getCh();
+  lay.clipping     = r.getCh();
+  lay.flag         = r.getCh();
+  (void)r.getCh(); // filler
+  uint32_t extraSize = (uint32_t)r.getInt32(true);
+  // ラウンドトリップ save 用に extraSize 全域の生バイトもキャプチャ。
+  // SubBlock とは別 clone なので干渉しない。
+  if (extraSize > 0) lay.extraData.rawBytes = r.cloneRange(0, (int)extraSize);
+  SubBlock blk(r, (int)extraSize);
+  if (extraSize > 0) parseLayerExtraData(blk.reader(), lay.extraData);
+}
+
+void parseLayerInfo(IteratorBase &r, Data &data) {
+  int16_t count = r.getInt16(true);
+  data.mergedAlpha = count < 0;
+  int n = count < 0 ? -count : count;
+  for (int i = 0; i < n; i++) parseLayerRecord(r, data);
+  // remaining bytes are the channel image data block (raw, used lazily by image decode)
+  data.channelImageData = r.cloneOffset(0);
+  r.advance(r.rest());
+}
+
+void parseGlobalLayerMaskInfo(IteratorBase &r, GlobalLayerMaskInfo &g) {
+  g.overlayColorSpace = r.getInt16(true);
+  g.color1 = r.getInt16(true);
+  g.color2 = r.getInt16(true);
+  g.color3 = r.getInt16(true);
+  g.color4 = r.getInt16(true);
+  g.opacity = r.getInt16(true);
+  g.kind    = r.getCh();
+  // trailing filler bytes are ignored
+}
+
+void parseLayerAndMask(IteratorBase &outer, Data &data) {
+  uint32_t total = (uint32_t)outer.getInt32(true);
+  if (total == 0) return;
+  SubBlock blk(outer, (int)total);
+  IteratorBase &r = blk.reader();
+  // layer info
+  {
+    uint32_t s = (uint32_t)r.getInt32(true);
+    SubBlock layerBlk(r, (int)s);
+    if (s > 0) parseLayerInfo(layerBlk.reader(), data);
+  }
+  // global layer mask info
+  if (r.rest() >= 4) {
+    uint32_t s = (uint32_t)r.getInt32(true);
+    // ラウンドトリップ save 用に raw bytes を保持。
+    if (s > 0) data.globalLayerMaskInfoRaw = r.cloneRange(0, (int)s);
+    SubBlock gblk(r, (int)s);
+    if (s > 0) parseGlobalLayerMaskInfo(gblk.reader(), data.globalLayerMaskInfo);
+  }
+  // 残りは Lr16/Lr32 などの secondary layer info。本実装では未解釈だが、
+  // ラウンドトリップ save のため生バイトとして保持しておく。
+  if (r.rest() > 0) data.layerAndMaskTrailing = r.cloneRange(0, r.rest());
+}
+
+void parseImageData(IteratorBase &r, Data &data) {
+  if (r.rest() <= 0) return;
+  data.imageData = r.cloneOffset(0);
+  r.advance(r.rest());
+}
+
+}  // anonymous namespace
+
+bool parsePSD(IteratorBase &reader, Data &data) {
+  if (!parseHeader(reader, data.header)) return false;
+  parseColorModeData(reader, data);
+  parseImageResources(reader, data);
+  parseLayerAndMask(reader, data);
+  parseImageData(reader, data);
+  return true;
+}
+
 } // namespace psd

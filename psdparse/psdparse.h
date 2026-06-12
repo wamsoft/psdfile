@@ -3,720 +3,326 @@
 
 #include "stdafx.h"
 #include "psddata.h"
-#include  <tp_stub.h>
+
+#include <cstring>
+#include <algorithm>
 
 namespace psd {
 
-	// 汎用版バッファコピー
-	template <typename Iterator>
-	inline void copyToBuffer(uint8_t *buffer, Iterator &start, int size) {
-		Iterator end = start;
-		std::advance(end, size);
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-// std::copy の security warning 抑止
-#pragma warning(push) 
-#pragma warning(disable:4996) 
-#endif 
-		std::copy(start, end, buffer);
-#if defined(_MSC_VER) && _MSC_VER >= 1400 
-#pragma warning(pop) 
-#endif 
-		start = end;
-	}
+// MemoryReader: IteratorBase over a contiguous byte buffer.
+//
+// Carries a [start_, end_) sub-range within an underlying shared buffer so
+// init()/size()/rest()/eoi() observe the sub-range -- matching how the
+// original Boost.Spirit IteratorData<Iterator> behaved over qi::raw[advance(N)]
+// captures.  cloneOffset(N) carves out a sub-reader starting at pos_+N and
+// extending to the parent's end_.
+//
+// PSD is big-endian on disk; convToNative=true swaps to host endianness.
+class MemoryReader : public IteratorBase {
+public:
+  MemoryReader(const uint8_t *base, int length)
+    : base_(base), start_(0), end_(length), pos_(0) {}
 
-	template <typename Iterator>
-	inline void getShortBE(uint8_t *var8, Iterator &cur) {
-		var8[1] = *cur++;
-		var8[0] = *cur++;
-	}
-
-	template <typename Iterator>
-	inline void getShortLE(uint8_t *var8, Iterator &cur) {
-		var8[0] = *cur++;
-		var8[1] = *cur++;
-	}
-
-	template <typename Iterator>
-	inline void getLongBE(uint8_t *var8, Iterator &cur) {
-		var8[3] = *cur++;
-		var8[2] = *cur++;
-		var8[1] = *cur++;
-		var8[0] = *cur++;
-	}
-
-	template <typename Iterator>
-	inline void getLongLE(uint8_t *var8, Iterator &cur) {
-		var8[0] = *cur++;
-		var8[1] = *cur++;
-		var8[2] = *cur++;
-		var8[3] = *cur++;
-	}
-
-	template <typename Iterator>
-	inline void getLongLongBE(uint8_t *var8, Iterator &cur) {
-		var8[7] = *cur++;		var8[6] = *cur++;
-		var8[5] = *cur++;		var8[4] = *cur++;
-		var8[3] = *cur++;		var8[2] = *cur++;
-		var8[1] = *cur++;		var8[0] = *cur++;
-	}
-
-	template <typename Iterator>
-	inline void getLongLongLE(uint8_t *var8, Iterator &cur) {
-		var8[0] = *cur++;		var8[1] = *cur++;
-		var8[2] = *cur++;		var8[3] = *cur++;
-		var8[4] = *cur++;		var8[5] = *cur++;
-		var8[6] = *cur++;		var8[7] = *cur++;
-	}
-	
-	// 汎用イテレータ参照
-	template <typename Iterator>
-	class IteratorData : public IteratorBase {
-	public:
-		typedef boost::iterator_range<Iterator> irange;
-		IteratorData(irange range) : range(range) {
-			init();
-		};
-		IteratorBase *clone() {
-			return new IteratorData(range);
-		}
-    IteratorBase *cloneOffset(int offset) {
-      IteratorData *id = new IteratorData(range);
-      if (offset != 0) {
-        id->range.advance_begin(offset);
-        id->init();
-      }
-      return id;
+  IteratorBase *clone() override {
+    MemoryReader *r = new MemoryReader(base_, end_);
+    r->start_ = start_;
+    r->pos_   = pos_;
+    return r;
+  }
+  IteratorBase *cloneOffset(int offset) override {
+    int newStart = pos_ + offset;
+    if (newStart < start_) newStart = start_;
+    if (newStart > end_)   newStart = end_;
+    MemoryReader *r = new MemoryReader(base_, end_);
+    r->start_ = newStart;
+    r->pos_   = newStart;
+    return r;
+  }
+  IteratorBase *cloneRange(int offset, int length) override {
+    int newStart = pos_ + offset;
+    if (newStart < 0)    newStart = 0;
+    if (newStart > end_) newStart = end_;
+    if (length < 0) length = 0;
+    int newEnd = newStart + length;
+    if (newEnd > end_) newEnd = end_;
+    if (newEnd < newStart) newEnd = newStart;
+    MemoryReader *r = new MemoryReader(base_, newEnd);
+    r->start_ = newStart;
+    r->pos_   = newStart;
+    return r;
+  }
+  void init() override { pos_ = start_; }
+  bool eoi() override { return pos_ >= end_; }
+  int size() override { return end_ - start_; }
+  int rest() override { return end_ - pos_; }
+  void advance(int n) override {
+    pos_ += n;
+    if (pos_ > end_)   pos_ = end_;
+    if (pos_ < start_) pos_ = start_;
+  }
+  int getCh() override {
+    if (pos_ >= end_) return -1;
+    return base_[pos_++];
+  }
+  int getData(void *buffer, int n) override {
+    int avail = end_ - pos_;
+    if (n > avail) n = avail;
+    if (n > 0) std::memcpy(buffer, base_ + pos_, (size_t)n);
+    pos_ += n;
+    return n;
+  }
+  int16_t getInt16(bool convToNative=true) override {
+    if (end_ - pos_ < 2) return -1;
+    uint8_t b0 = base_[pos_++];
+    uint8_t b1 = base_[pos_++];
+    return assemble16_(b0, b1, convToNative);
+  }
+  int32_t getInt32(bool convToNative=true) override {
+    if (end_ - pos_ < 4) return -1;
+    uint8_t b[4];
+    b[0] = base_[pos_++]; b[1] = base_[pos_++];
+    b[2] = base_[pos_++]; b[3] = base_[pos_++];
+    return assemble32_(b, convToNative);
+  }
+  int64_t getInt64(bool convToNative=true) override {
+    if (end_ - pos_ < 8) return -1;
+    uint8_t b[8];
+    for (int i = 0; i < 8; i++) b[i] = base_[pos_++];
+    return assemble64_(b, convToNative);
+  }
+  void getUnicodeString(u16str &str, bool convToNative=true) override {
+    int len = getInt32(true);
+    str.clear();
+    if (len < 0) return;
+    str.reserve((size_t)len);
+    for (int i = 0; i < len; i++) {
+      str.push_back((char16_t)getInt16(convToNative));
     }
-		virtual void init() {
-			cur = range.begin();
-		}
-		virtual int getCh() {
-			if (eoi()) {
-				return -1;
-			}
-			return *cur++;
-		}
-		virtual int16_t getInt16(bool convToNative) {
-      if (std::distance(cur, range.end()) < 2) {
-        return -1;
-      }
-      union {
-        uint8_t var8[2];
-        int16_t var16;
-      } ret;
-#ifdef BOOST_LITTLE_ENDIAN
-      bool swap = convToNative;
+  }
+
+private:
+  static int16_t assemble16_(uint8_t hi, uint8_t lo, bool convToNative) {
+    // PSD is BE: hi is the high byte on disk.
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
 #else
-      bool swap = !convToNative;
+    bool swap = !convToNative;
 #endif
-      if (swap) {
-				getShortBE(ret.var8, cur);
-      } else {
-				getShortLE(ret.var8, cur);
-      }
-      return ret.var16;
-		}
-		virtual int32_t getInt32(bool convToNative) {
-      if (std::distance(cur, range.end()) < 4) {
-        return -1;
-      }
-      union {
-        uint8_t var8[4];
-        int32_t var32;
-      } ret;
-#ifdef BOOST_LITTLE_ENDIAN
-      bool swap = convToNative;
+    union { uint8_t u8[2]; int16_t i16; } u;
+    if (swap) { u.u8[0] = lo; u.u8[1] = hi; }
+    else      { u.u8[0] = hi; u.u8[1] = lo; }
+    return u.i16;
+  }
+  static int32_t assemble32_(const uint8_t *b, bool convToNative) {
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
 #else
-      bool swap = !convToNative;
+    bool swap = !convToNative;
 #endif
-      if (swap) {
-				getLongBE(ret.var8, cur);
-      } else {
-				getLongLE(ret.var8, cur);
-      }
-      return ret.var32;
-		}
-		virtual int64_t getInt64(bool convToNative) {
-      if (std::distance(cur, range.end()) < 8) {
-        return -1;
-      }
-      union {
-        uint8_t var8[8];
-        int64_t var64;
-      } ret;
-#ifdef BOOST_LITTLE_ENDIAN
-      bool swap = convToNative;
+    union { uint8_t u8[4]; int32_t i32; } u;
+    if (swap) { u.u8[0]=b[3]; u.u8[1]=b[2]; u.u8[2]=b[1]; u.u8[3]=b[0]; }
+    else      { u.u8[0]=b[0]; u.u8[1]=b[1]; u.u8[2]=b[2]; u.u8[3]=b[3]; }
+    return u.i32;
+  }
+  static int64_t assemble64_(const uint8_t *b, bool convToNative) {
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
 #else
-      bool swap = !convToNative;
+    bool swap = !convToNative;
 #endif
-      if (swap) {
-				getLongLongBE(ret.var8, cur);
-      } else {
-				getLongLongLE(ret.var8, cur);
+    union { uint8_t u8[8]; int64_t i64; } u;
+    if (swap) { for (int i = 0; i < 8; i++) u.u8[i] = b[7-i]; }
+    else      { for (int i = 0; i < 8; i++) u.u8[i] = b[i]; }
+    return u.i64;
+  }
+
+  const uint8_t *base_;
+  int start_;
+  int end_;
+  int pos_;
+};
+
+// StreamReader: IteratorBase for arbitrary seekable byte streams.
+//
+// Holds a shared "byte source" (std::istream or any subclass of
+// StreamReader::Source) and a small per-reader cache.  Sub-readers created
+// via cloneOffset / cloneRange share the same source but track their own
+// [start, end) and pos with private caches.  Use this for stream-only
+// providers (kirikiri iTJSBinaryStream, network-backed seekable streams,
+// std::ifstream when mmap is unavailable, ...).
+//
+// Lifetime contract: every sub-reader holds a shared_ptr to the source, so
+// the source stays alive as long as any reader points into it.
+class StreamReader : public IteratorBase {
+public:
+  // Abstract byte source. Subclass to wrap iTJSBinaryStream etc.
+  // size() returns total source size; read() copies up to len bytes at offset.
+  class Source {
+  public:
+    virtual ~Source() = default;
+    virtual size_t size() const = 0;
+    virtual size_t read(uint8_t *out, size_t offset, size_t len) = 0;
+  };
+
+  explicit StreamReader(std::shared_ptr<Source> src)
+    : src_(std::move(src)),
+      start_(0),
+      end_((int)(src_ ? src_->size() : 0)),
+      pos_(0),
+      cachePos_(-1),
+      cacheLen_(0) {}
+
+  IteratorBase *clone() override {
+    auto r = new StreamReader(src_);
+    r->start_ = start_;
+    r->end_   = end_;
+    r->pos_   = pos_;
+    return r;
+  }
+  IteratorBase *cloneOffset(int offset) override {
+    int newStart = pos_ + offset;
+    if (newStart < 0)    newStart = 0;
+    if (newStart > end_) newStart = end_;
+    auto r = new StreamReader(src_);
+    r->start_ = newStart;
+    r->end_   = end_;
+    r->pos_   = newStart;
+    return r;
+  }
+  IteratorBase *cloneRange(int offset, int length) override {
+    int newStart = pos_ + offset;
+    if (newStart < 0) newStart = 0;
+    int srcSize = (int)src_->size();
+    if (newStart > srcSize) newStart = srcSize;
+    if (length < 0) length = 0;
+    int newEnd = newStart + length;
+    if (newEnd > srcSize) newEnd = srcSize;
+    if (newEnd < newStart) newEnd = newStart;
+    auto r = new StreamReader(src_);
+    r->start_ = newStart;
+    r->end_   = newEnd;
+    r->pos_   = newStart;
+    return r;
+  }
+  void init() override { pos_ = start_; }
+  bool eoi() override  { return pos_ >= end_; }
+  int size() override  { return end_ - start_; }
+  int rest() override  { return end_ - pos_; }
+  void advance(int n) override {
+    pos_ += n;
+    if (pos_ > end_)   pos_ = end_;
+    if (pos_ < start_) pos_ = start_;
+  }
+  int getCh() override {
+    if (pos_ >= end_) return -1;
+    uint8_t b;
+    if (readAt_(pos_, &b, 1) != 1) return -1;
+    pos_++;
+    return b;
+  }
+  int getData(void *buffer, int n) override {
+    int avail = end_ - pos_;
+    if (n > avail) n = avail;
+    if (n <= 0) return 0;
+    size_t got = readAt_(pos_, (uint8_t *)buffer, (size_t)n);
+    pos_ += (int)got;
+    return (int)got;
+  }
+  int16_t getInt16(bool convToNative=true) override {
+    uint8_t b[2];
+    if (getData(b, 2) != 2) return -1;
+    return assembleInt16_(b, convToNative);
+  }
+  int32_t getInt32(bool convToNative=true) override {
+    uint8_t b[4];
+    if (getData(b, 4) != 4) return -1;
+    return assembleInt32_(b, convToNative);
+  }
+  int64_t getInt64(bool convToNative=true) override {
+    uint8_t b[8];
+    if (getData(b, 8) != 8) return -1;
+    return assembleInt64_(b, convToNative);
+  }
+  void getUnicodeString(u16str &str, bool convToNative=true) override {
+    int len = getInt32(true);
+    str.clear();
+    if (len < 0) return;
+    str.reserve((size_t)len);
+    for (int i = 0; i < len; i++) {
+      str.push_back((char16_t)getInt16(convToNative));
+    }
+  }
+
+private:
+  // 4 KB cache fed by source->read(); satisfies most short sequential reads
+  // without re-entering the source.
+  size_t readAt_(int pos, uint8_t *out, size_t len) {
+    if (!src_) return 0;
+    size_t copied = 0;
+    while (copied < len) {
+      if (cachePos_ < 0 || pos < cachePos_ ||
+          pos >= cachePos_ + cacheLen_) {
+        cachePos_ = pos;
+        cacheLen_ = (int)src_->read(cache_, (size_t)pos, sizeof(cache_));
+        if (cacheLen_ <= 0) break;
       }
-      return ret.var64;
-		}
-		virtual int getData(void *buffer, int size) {
-			if (eoi()) {
-				return 0;
-			}
-			int remain = (int)std::distance(cur, range.end());
-			if (size > remain) {
-				size = remain;
-			}
-			
-			copyToBuffer((uint8_t*)buffer, cur, size);
-			
-			return size;
-		}
-		virtual bool eoi() {
-			return cur == range.end();
-		}
-    virtual void getUnicodeString(tjs_string &str, bool convToNative=true) {
-      int size = getInt32(true);
-      str.clear();
-      for (int i = 0; i < size; i++) {
-        str.push_back((tjs_char)getInt16(convToNative));
-      }
+      int offsetInCache = pos - cachePos_;
+      int avail         = cacheLen_ - offsetInCache;
+      int want          = (int)(len - copied);
+      int n             = (avail < want) ? avail : want;
+      std::memcpy(out + copied, cache_ + offsetInCache, (size_t)n);
+      copied += (size_t)n;
+      pos    += n;
     }
-    virtual int size() {
-      return std::distance(range.begin(), range.end());
-    }
-    virtual int rest() {
-      return std::distance(cur, range.end());
-    }
-    virtual void advance(int size) {
-			if (!eoi()) {
-        int remain = (int)std::distance(cur, range.end());
-        if (size > remain) {
-          size = remain;
-        }
-        std::advance(cur, size);
-      }
-    }
-	private:
-		irange range;
-		Iterator cur;
-	};
+    return copied;
+  }
+  static int16_t assembleInt16_(const uint8_t *b, bool convToNative) {
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
+#else
+    bool swap = !convToNative;
+#endif
+    union { uint8_t u8[2]; int16_t i16; } u;
+    if (swap) { u.u8[0]=b[1]; u.u8[1]=b[0]; }
+    else      { u.u8[0]=b[0]; u.u8[1]=b[1]; }
+    return u.i16;
+  }
+  static int32_t assembleInt32_(const uint8_t *b, bool convToNative) {
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
+#else
+    bool swap = !convToNative;
+#endif
+    union { uint8_t u8[4]; int32_t i32; } u;
+    if (swap) { u.u8[0]=b[3]; u.u8[1]=b[2]; u.u8[2]=b[1]; u.u8[3]=b[0]; }
+    else      { u.u8[0]=b[0]; u.u8[1]=b[1]; u.u8[2]=b[2]; u.u8[3]=b[3]; }
+    return u.i32;
+  }
+  static int64_t assembleInt64_(const uint8_t *b, bool convToNative) {
+#ifdef PSD_LITTLE_ENDIAN
+    bool swap = convToNative;
+#else
+    bool swap = !convToNative;
+#endif
+    union { uint8_t u8[8]; int64_t i64; } u;
+    if (swap) { for (int i = 0; i < 8; i++) u.u8[i] = b[7-i]; }
+    else      { for (int i = 0; i < 8; i++) u.u8[i] = b[i]; }
+    return u.i64;
+  }
 
-	namespace spirit = boost::spirit;
-	namespace qi     = spirit::qi;
-	namespace phx    = boost::phoenix;
-	namespace repos  = boost::spirit::repository;
+  std::shared_ptr<Source> src_;
+  int start_;
+  int end_;
+  int pos_;
+  uint8_t cache_[4096];
+  int cachePos_;  // absolute pos covered by cache[0..cacheLen_); -1 = invalid
+  int cacheLen_;
+};
 
-	template <typename Iterator>
-	struct HeaderParser : qi::grammar<Iterator> {
-		HeaderParser(Header &data) : HeaderParser::base_type(start), data(data) {
-			start =
-				(qi::lit("8BPS") >>
-				 qi::big_word  >>
-         repos::qi::advance(6) >>
-				 qi::big_word  >>
-				 qi::big_dword >>
-				 qi::big_dword >>
-				 qi::big_word  >>
-				 qi::big_word 
-				 )[phx::bind(&HeaderParser::setHeader, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
-		}
+// Parser entry point. Returns true if the structural parse succeeded
+// (header signature matched and the four top-level blocks were read).
+bool parsePSD(IteratorBase &reader, Data &data);
 
-    void setHeader(int version, int channels, int height, int width, int depth, int mode) {
-      data.version = version;
-      data.channels = channels;
-      data.height = height;
-      data.width = width;
-      data.depth = depth;
-      data.mode = mode;
-    }
-
-		qi::rule<Iterator> start;
-		Header &data;
-	};
-	
-	/**
-	 * イメージリソースパーサ
-	 */
-	template <typename Iterator>
-	struct ImageResourceParser : qi::grammar<Iterator> {
-
-		typedef boost::iterator_range<Iterator> irange;
-
-		ImageResourceParser(Data &data) : ImageResourceParser::base_type(start), data(data) {
-			// カッコ内で式が使えないadvance用に事前にパディング等を計算しておくための一時変数
-			int paddedSize = 0;
-
-			// イメージリソース単体
-			anImageResource =
-				(qi::lit("8BIM") >>                                  // signature
-				 qi::big_word >>                                     // resource ID
-				 qi::byte_ [qi::_a = qi::_1] >>                      // name size
-				 spirit::repeat(qi::_a)[qi::char_] >>                // name
-				 spirit::repeat((qi::_a + 1)%2)[qi::byte_] >>        // パディング読み飛ばし
-         qi::big_dword [qi::_a = qi::_1] [phx::ref(paddedSize) = (qi::_a+1)/2*2] >> // サイズ
-         qi::raw[repos::qi::advance(phx::ref(paddedSize))]   // データ(パディング含む)
-				 )[phx::bind(&ImageResourceParser::addImageResource, this, qi::_1, qi::_3, qi::_5, qi::_6)];
-			start = *anImageResource;
-		}
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> anImageResource;
-		qi::rule<Iterator> start;
-		Data &data;
-
-		// イメージリソースを一つ追加する
-		void addImageResource(uint16_t id, std::vector<char> &name, int size, irange range) {
-			std::string strname;
-			if (name.size() > 0) {
-				strname.assign(&name[0], name.size());
-			}
-			ImageResourceInfo info(id, strname, size, new IteratorData<Iterator>(range));
-			data.imageResourceList.push_back(info);
-		}
-	};
-
-	/**
-	 * レイヤ extra data パーサ
-	 */
-	template <typename Iterator>
-	struct LayerMaskParser : qi::grammar<Iterator> {
-		
-		typedef boost::iterator_range<Iterator> irange;
-		
-    LayerMaskParser(LayerMask &data, int size) : LayerMaskParser::base_type(start), data(data)
-    {
-      start =
-        (qi::big_dword >>
-        qi::big_dword >>
-        qi::big_dword >>
-        qi::big_dword >>
-        qi::byte_ >>
-        qi::byte_ >>
-        qi::byte_
-        )[phx::bind(&LayerMaskParser::setLayerMask, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
-
-      if (size > 20) {
-        start = (start.copy() >>
-          qi::byte_ >>
-          qi::byte_ >>
-          qi::big_dword >>
-          qi::big_dword >>
-          qi::big_dword >>
-          qi::big_dword
-          )[phx::bind(&LayerMaskParser::setLayerMaskExtra, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6)];
-      }
-    }
-
-    void setLayerMask(int top, int left, int bottom, int right, int defaultColor, int flags)
-    {
-      data.top = top;
-      data.left = left;
-      data.bottom = bottom;
-      data.right = right;
-      data.defaultColor = defaultColor;
-      data.flags = flags;
-    }
-
-    void setLayerMaskExtra(int realFlags, int realUserMaskBackground, int enclosingTop, int enclosingLeft, int enclosingBottom, int enclosingRight)
-    {
-      data.realFlags = realFlags;
-      data.realUserMaskBackground = realUserMaskBackground;
-      data.enclosingTop = enclosingTop;
-      data.enclosingLeft = enclosingLeft;
-      data.enclosingBottom = enclosingBottom;
-      data.enclosingRight = enclosingRight;
-    }
-
-		qi::rule<Iterator> start;
-		LayerMask &data;
-	};
-
-	/**
-	 * レイヤ blending range パーサ
-	 */
-	template <typename Iterator>
-	struct LayerBlendingRangeParser : qi::grammar<Iterator> {
-		LayerBlendingRangeParser(LayerBlendingRange &data) : LayerBlendingRangeParser::base_type(start), data(data) {
-			channel =
-				(qi::big_dword >> qi::big_dword)
-				[phx::bind(&LayerBlendingRangeParser::addChannel, this, qi::_1, qi::_2)];
-			start =
-				 (qi::big_dword >>
-				 qi::big_dword >>
-				 *channel)[phx::bind(&LayerBlendingRangeParser::setgrayBlend, this, qi::_1, qi::_2)];
-		}
-		void addChannel(int source, int dest) {
-			LayerBlendingChannel ch = { source, dest };
-			data.channels.push_back(ch);
-		}
-    void setgrayBlend(int src, int dest)
-    {
-      data.grayBlendSource = src;
-      data.grayBlendDest = dest;
-    }
-		qi::rule<Iterator> channel;
-		qi::rule<Iterator> start;
-		LayerBlendingRange &data;
-	};
-	
-	/**
-	 * レイヤ extra data パーサ
-	 */
-	template <typename Iterator>
-	struct LayerExtraDataParser : qi::grammar<Iterator> {
-		
-		typedef boost::iterator_range<Iterator> irange;
-		
-		LayerExtraDataParser(LayerExtraData &data) : LayerExtraDataParser::base_type(start), data(data) {
-
-			layerMask =
-				(qi::big_dword[qi::_a = qi::_1] >>
-				 qi::raw[repos::qi::advance(qi::_a)]
-				 )[phx::bind(&LayerExtraDataParser::setLayerMask, this, qi::_1, qi::_2)];
-
-			layerBlendingRange = 
-				(qi::big_dword[qi::_a = qi::_1] >>
-				 qi::raw[repos::qi::advance(qi::_a)]
-				 )[phx::bind(&LayerExtraDataParser::setLayerBlendingRange, this, qi::_1, qi::_2)];
-
-			layerName =
-				(qi::byte_ [qi::_a = qi::_1] >>            // name size
-				 spirit::repeat(qi::_a)[qi::char_] [phx::bind(&LayerExtraDataParser::setLayerName, this, qi::_1)] >>
-				 spirit::repeat((4-(qi::_a+1)&3)&3)[qi::byte_] // padding
-				 );
-
-			// 追加レイヤ情報
-			additional =
-				((qi::lit("8BIM")[qi::_a=0] | qi::lit("8B64")[qi::_a=1]) >>
-				 qi::big_dword >> // key
-				 qi::big_dword[qi::_b = qi::_1] >> // data length
-         qi::raw[repos::qi::advance(qi::_b)] // data
-				 )[phx::bind(&LayerExtraDataParser::addAdditional, this, qi::_a, qi::_1, qi::_2, qi::_3)];
-
-			start =
-				(layerMask >>
-				 layerBlendingRange >>
-				 layerName >>
-         *additional
-				 );
-		}
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerMask;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerBlendingRange;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerName;
-		qi::rule<Iterator, qi::locals<int, boost::uint32_t>> additional;
-		qi::rule<Iterator> start;
-		
-		void setLayerMask(int size, irange range) {
-			if (size > 0) {
-				LayerMaskParser<Iterator> parser(data.layerMask, size);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-        data.layerMask.width  = data.layerMask.right - data.layerMask.left;
-        data.layerMask.height = data.layerMask.bottom - data.layerMask.top;
-      } else {
-        std::memset(&data.layerMask, 0, sizeof(LayerMask));
-      }
-		}
-
-		void setLayerBlendingRange(int size, irange range) {
-			if (size > 0) {
-				LayerBlendingRangeParser<Iterator> parser(data.layerBlendingRange);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			} else {
-        std::memset(&data.layerBlendingRange, 0, sizeof(LayerBlendingRange));
-      }
-		}
-		
-		void setLayerName(std::vector<char> &name) {
-			if (name.size() > 0) {
-				data.layerName.assign(&name[0], name.size());
-			}
-		}
-
-    void addAdditional(int sigType, int key, int size, irange range) {
-      data.additionalLayers.push_back(AdditionalLayerInfo(sigType, key, size, new IteratorData<Iterator>(range)));
-		}
-
-		LayerExtraData &data;
-	};
-	
-	/**
-	 * レイヤ情報パーサ
-	 */
-	template <typename Iterator>
-	struct LayerInfoParser : qi::grammar<Iterator> {
-
-		typedef boost::iterator_range<Iterator> irange;
-
-		LayerInfoParser(Data &data) : LayerInfoParser::base_type(start), data(data) {
-
-			// チャンネル情報
-			channelInfo =
-				(qi::big_word >> // id
-				 qi::big_dword  // length
-				 )[phx::bind(&LayerInfoParser::addChannel, this, qi::_1, qi::_2)];
-
-			// エクストラデータ用処理
-			extraData =
-			    (qi::big_dword[qi::_a = qi::_1] >> // extra data size
-				 qi::raw[repos::qi::advance(qi::_a)]
-				 )[phx::bind(&LayerInfoParser::setExtraData, this, qi::_1, qi::_2)];
-			
-			// レイヤ情報
-			layerRecord =
-				(qi::eps [phx::bind(&LayerInfoParser::addLayer, this)] >> 
-				 qi::big_dword >> // top
-				 qi::big_dword >> // left
-				 qi::big_dword >> // bottom
-				 qi::big_dword    // right
-				 )[phx::bind(&LayerInfoParser::setLayerSize, this, qi::_1, qi::_2, qi::_3, qi::_4)] >>
-				 qi::big_word[qi::_a = qi::_1]  >> // channel nums
-				 spirit::repeat(qi::_a)[channelInfo] >> // channel information
-				 qi::lit("8BIM") >> // signature
-				(qi::big_dword >> // blend mode key
-				 qi::byte_     >> // opacity
-				 qi::byte_     >> // clipping
-				 qi::byte_        // flag
-				 )[phx::bind(&LayerInfoParser::setLayerData, this, qi::_1, qi::_2, qi::_3, qi::_4)] >>
-				 qi::byte_     >> // filler(zero)
-				 extraData
-				 ;
-			// パース開始部
-			start =
-				(qi::big_word[phx::bind(&LayerInfoParser::setLayerCount, this, qi::_1)] >>
-				 layerRecords >>
-				 qi::raw[*qi::byte_][phx::bind(&LayerInfoParser::setChannelImageData, this, qi::_1)]
-				 );
-		}
-
-		// レイヤ数指定
-		void setLayerCount(boost::int16_t count) {
-			data.mergedAlpha = count < 0;
-			if (count == 0) {
-				layerRecords = qi::eps;
-			} else {
-				layerRecords = spirit::repeat(abs(count))[layerRecord];
-			}
-		}
-
-		void addChannel(int16_t id, int length) {
-			data.layerList.back().channels.push_back(ChannelInfo(id, length));
-		}
-
-		void addLayer() {
-			data.layerList.push_back(LayerInfo());
-		}
-
-		// チャンネルイメージデータの場所を記録
-		void setExtraData(int size, irange range) {
-			if (size > 0) {
-				LayerExtraDataParser<Iterator> parser(data.layerList.back().extraData);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			}
-		}
-
-		// レイヤ基本情報を設定
-		void setLayerSize(int top, int left, int bottom, int right) {
-			LayerInfo &info = data.layerList.back();
-			info.top = top;
-			info.left = left;
-			info.bottom = bottom;
-			info.right = right;
-      info.width = right - left;
-      info.height = bottom - top;
-		}
-
-		// レイヤのその他のデータを設定
-		void setLayerData(int blendModeKey, int opacity, int clipping, int flag) {
-			LayerInfo &info = data.layerList.back();
-			info.blendModeKey = blendModeKey;
-      info.blendMode = blendKeyToMode(blendModeKey);
-			info.opacity = opacity;
-			info.clipping = clipping;
-			info.flag = flag;
-		}
-
-		// チャンネルイメージデータの場所を記録
-		void setChannelImageData(irange range) {
-			data.channelImageData = new IteratorData<Iterator>(range);
-		}
-		
-		qi::rule<Iterator> channelInfo;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> extraData;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerRecord;
-		qi::rule<Iterator> layerRecords;
-		qi::rule<Iterator> start;
-		
-		Data &data;
-	};
-
-	// Global layer mask info parser
-	template <typename Iterator>
-	struct GlobalLayerMaskInfoParser : qi::grammar<Iterator> {
-		GlobalLayerMaskInfoParser(GlobalLayerMaskInfo &data) : GlobalLayerMaskInfoParser::base_type(start), data(data) {
-			start =
-				(qi::big_word >>
-				 qi::big_word >>
-				 qi::big_word >> 
-				 qi::big_word >> 
-				 qi::big_word >> 
-				 qi::big_word >>
-				 qi::byte_    >>
-				 *qi::byte_
-				 )[phx::bind(&GlobalLayerMaskInfoParser::setLayerMaskInfo, this, qi::_1, qi::_2, qi::_3, qi::_4, qi::_5, qi::_6, qi::_7)];
-		}
-
-    void setLayerMaskInfo(int overlayColorSpace, int color1, int color2, int color3, int color4, int opacity, int kind)
-    {
-      data.overlayColorSpace = overlayColorSpace;
-      data.color1 = color1;
-      data.color2 = color2;
-      data.color3 = color3;
-      data.color4 = color4;
-      data.opacity = opacity;
-      data.kind = kind;
-    }
-
-		qi::rule<Iterator> start;
-		GlobalLayerMaskInfo &data;
-	};
-	
-	/**
-	 * layer and mask parser
-	 */
-	template <typename Iterator>
-	struct LayerAndMaskParser : qi::grammar<Iterator> {
-
-		typedef boost::iterator_range<Iterator> irange;
-
-		LayerAndMaskParser(Data &data) : LayerAndMaskParser::base_type(start), data(data) {
-
-			layerInfo =
-				(qi::big_dword[qi::_a = qi::_1] >> // size
-				 qi::raw[repos::qi::advance(qi::_a)] // data
-				 )[phx::bind(&LayerAndMaskParser::setLayerInfo, this, qi::_1, qi::_2)];
-
-			globalLayerMaskInfo =
-				(qi::big_dword[qi::_a = qi::_1] >> // size
-				 qi::raw[repos::qi::advance(qi::_a)] // data
-				 )[phx::bind(&LayerAndMaskParser::setGlobalLayerMaskInfo, this, qi::_1, qi::_2)];
-
-      layerInfo2 =
-        qi::lit("8BIM") >>
-        (qi::lit("Lr16") | qi::lit("Lr32")) >> // TODO Txt2, Patt, Pat2
-        layerInfo;
-
-			start =
-				layerInfo >>    // レイヤ情報
-				globalLayerMaskInfo >> // グローバルレイヤマスク
-         -layerInfo2
-				;
-		}
-
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerInfo;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerInfo2;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> globalLayerMaskInfo;
-		qi::rule<Iterator> start;
-
-		void setLayerInfo(int size, irange range) {
-			if (size > 0) {
-				LayerInfoParser<Iterator> parser(data);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			}
-		}
-
-		void setGlobalLayerMaskInfo(int size, irange range) {
-			if (size > 0) {
-				GlobalLayerMaskInfoParser<Iterator> parser(data.globalLayerMaskInfo);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			}
-		}
-		
-		Data &data;
-	};
-
-	/**
-	 * PSD Parser
-	 */
-	template <typename Iterator>
-	struct Parser : qi::grammar<Iterator> {
-
-		typedef boost::iterator_range<Iterator> irange;
-
-		Parser(Data &data)
-			 : Parser::base_type(start), data(data), headerParser(data.header) {
-
-			// カラーモード情報
-			colorMode =
-				(qi::big_dword[qi::_a = qi::_1] >>          // size
-				 qi::raw[repos::qi::advance(qi::_a)] // data
-				 )[phx::bind(&Parser::setColorModeData, this, qi::_1, qi::_2)];
-
-			// イメージリソース処理
-			imageResource =
-				(qi::big_dword[qi::_a = qi::_1] >>          // size
-				 qi::raw[repos::qi::advance(qi::_a)]        // data
-				)[phx::bind(&Parser::setImageResource, this, qi::_1, qi::_2)];
-			
-			// レイヤとマスク
-			layerAndMask =
-				(qi::big_dword[qi::_a = qi::_1] >>      // size
-         qi::raw[repos::qi::advance(qi::_a)] // data
-				)[phx::bind(&Parser::setLayerAndMask, this, qi::_1, qi::_2)];
-
-			// 画像データ
-			imageData = qi::raw[+qi::byte_][phx::bind(&Parser::setImageData, this, qi::_1)];
-
-			start =
-				headerParser >>
-				colorMode >>
-				imageResource >>
-				layerAndMask >>
-        -imageData >>
-        qi::eoi;
-		}
-
-		HeaderParser<Iterator> headerParser;
-		
-		// rules
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> colorMode;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> imageResource;
-		qi::rule<Iterator, qi::locals<boost::uint32_t>> layerAndMask;
-		qi::rule<Iterator> imageData;
-		qi::rule<Iterator> start;
-
-		// カラーモードデータを登録
-		void setColorModeData(int size, irange range) {
-			data.colorModeSize = size;
-			data.colorModeIterator = new IteratorData<Iterator>(range);
-		}
-		
-		/**
-		 * イメージリソースを解析
-		 * @param size サイズ
-		 * @param range データ領域
-		 */
-		void setImageResource(int size, irange range) {
-			if (size > 0) {
-				ImageResourceParser<Iterator> parser(data);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			}
-		}
-
-		/**
-		 * レイヤ・マスク情報を解析
-		 * @param size サイズ
-		 * @param データ領域
-		 */
-		void setLayerAndMask(int size, irange range) {
-			if (size > 0) {
-				LayerAndMaskParser<Iterator> parser(data);
-				bool r = qi::parse(range.begin(), range.end(), parser);
-			}	
-		}
-
-		// 合成済み画像データの先頭位置を登録
-		void setImageData(irange range) {
-			data.imageData = new IteratorData<Iterator>(range);
-		}
-		
-		Data &data;
-	};
-}
+}  // namespace psd
 
 #endif

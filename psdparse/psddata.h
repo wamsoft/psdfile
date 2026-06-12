@@ -180,8 +180,8 @@ namespace psd {
     bool isRecordVisibility;
     bool isRecordPosition;
     bool isRecordAppearance;
-    tjs_string name;
-    tjs_string comment;
+    u16str name;
+    u16str comment;
   };
 
   // レイヤーごとのレイヤーカンプ情報
@@ -198,18 +198,18 @@ namespace psd {
     int groupId;
     int origin;
     int associatedLayerId; // Only present if Origin = 1
-    tjs_string name;
+    u16str name;
     int type;
     int left;
     int top;
     int right;
     int bottom;
-    tjs_string url;
-    tjs_string target;
-    tjs_string message;
-    tjs_string altTag;
+    u16str url;
+    u16str target;
+    u16str message;
+    u16str altTag;
     bool isCellTextHtml;
-    tjs_string cellText;
+    u16str cellText;
     int horizontalAlign;
     int verticalAlign;
     uint8_t colorA;
@@ -227,7 +227,7 @@ namespace psd {
     int boundingTop;
     int boundingRight;
     int boundingBottom;
-    tjs_string groupName;
+    u16str groupName;
     std::vector<SliceItem> slices;
   };
 
@@ -339,10 +339,32 @@ namespace psd {
 	};
 
 	struct LayerExtraData {
+		LayerExtraData() : rawBytes(0) {}
+		~LayerExtraData() { delete rawBytes; }
+		LayerExtraData(const LayerExtraData &self)
+		  : layerMask(self.layerMask),
+		    layerBlendingRange(self.layerBlendingRange),
+		    layerName(self.layerName),
+		    additionalLayers(self.additionalLayers),
+		    rawBytes(self.rawBytes ? self.rawBytes->clone() : 0) {}
+		LayerExtraData &operator=(const LayerExtraData &self) {
+		    if (this == &self) return *this;
+		    layerMask = self.layerMask;
+		    layerBlendingRange = self.layerBlendingRange;
+		    layerName = self.layerName;
+		    additionalLayers = self.additionalLayers;
+		    delete rawBytes;
+		    rawBytes = self.rawBytes ? self.rawBytes->clone() : 0;
+		    return *this;
+		}
+
 		LayerMask layerMask;
 		LayerBlendingRange layerBlendingRange;
 		std::string layerName;
     std::vector<AdditionalLayerInfo> additionalLayers;
+		// extraSize 全域の生バイト (ラウンドトリップ save 用)。parse 時に
+		// cloneRange(0, extraSize) でキャプチャ。
+		IteratorBase *rawBytes;
 	};
 
 	// チャンネル情報
@@ -395,7 +417,7 @@ namespace psd {
     int layerId;
     LayerType layerType;
 		std::string layerName;
-    tjs_string layerNameUnicode;
+    u16str layerNameUnicode;
     // int layerNameId;
     // int foreignEffectId;
     // BlendMode folderBlendMode; // blendMode 上書きにしている。問題あれば分離
@@ -423,6 +445,8 @@ namespace psd {
 		Data()
 			 : colorModeSize(0), colorModeIterator(0),
 			   mergedAlpha(false), channelImageData(0),
+			   globalLayerMaskInfoRaw(0),
+			   layerAndMaskTrailing(0),
 			   imageData(0)
 		{
 		}
@@ -436,6 +460,8 @@ namespace psd {
 		virtual void clearData() {
 			delete colorModeIterator; colorModeIterator = 0;
 			delete channelImageData; channelImageData = 0;
+			delete globalLayerMaskInfoRaw; globalLayerMaskInfoRaw = 0;
+			delete layerAndMaskTrailing; layerAndMaskTrailing = 0;
 			delete imageData; imageData = 0;
 		}
 
@@ -468,6 +494,13 @@ namespace psd {
 		
 		// global layer mask info
 		GlobalLayerMaskInfo globalLayerMaskInfo;
+		// global layer mask info ブロック (4 バイトサイズ後の本体) の生バイト。
+		// ラウンドトリップ save 用。空ブロック (size=0) の場合は 0。
+		IteratorBase *globalLayerMaskInfoRaw;
+		// layer and mask info 全体の中で global layer mask info より後ろに
+		// ある追加 info (Lr16/Lr32 などの secondary layer info) を未解釈の
+		// まま保持。ラウンドトリップ save 用。
+		IteratorBase *layerAndMaskTrailing;
 		
 		// 合成済み画像データ
 		IteratorBase *imageData;

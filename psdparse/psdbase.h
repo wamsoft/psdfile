@@ -1,7 +1,6 @@
 #ifndef __psdbase_h__
 #define __psdbase_h__
 
-#include <tp_stub.h>
 #include <string>
 
 #ifdef _DEBUG
@@ -12,6 +11,18 @@
 
 #ifndef _MSC_VER
   #include <stdint.h>
+#endif
+
+// little-endian detection (replacement for BOOST_LITTLE_ENDIAN)
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+  #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    #define PSD_LITTLE_ENDIAN 1
+  #endif
+#elif defined(_WIN32) || defined(_M_IX86) || defined(_M_X64) || \
+      defined(_M_ARM) || defined(_M_ARM64) || \
+      defined(__i386__) || defined(__x86_64__) || \
+      defined(__arm__) || defined(__aarch64__)
+  #define PSD_LITTLE_ENDIAN 1
 #endif
 
 namespace psd {
@@ -30,6 +41,10 @@ namespace psd {
 
   typedef float  float32_t;
   typedef double float64_t;
+
+  // PSD on-disk Unicode strings are UTF-16BE. Internally we store them as
+  // std::u16string (host-byte-order UTF-16 code units).
+  typedef std::u16string u16str;
 
   // ビット情報を維持した型変換用のunion
   union pun32 {
@@ -61,7 +76,13 @@ namespace psd {
 		IteratorBase() {};
 		virtual ~IteratorBase() {};
 		virtual IteratorBase *clone() = 0;
+    // cloneOffset(offset): sub-reader starting at current pos + offset, with
+    //   the SAME end as the parent (inherits the parent's upper bound).
     virtual IteratorBase *cloneOffset(int offset) = 0;
+    // cloneRange(offset, length): sub-reader bounded to exactly `length`
+    //   bytes starting at current pos + offset. Use this when carving out a
+    //   size-prefixed sub-block whose contents must not bleed past `length`.
+    virtual IteratorBase *cloneRange(int offset, int length) = 0;
 		virtual void init() = 0;
 		virtual int getCh() = 0;
 		virtual int16_t getInt16(bool convToNative=true) = 0;
@@ -69,7 +90,7 @@ namespace psd {
 		virtual int64_t getInt64(bool convToNative=true) = 0;
 		virtual int getData(void *buffer, int size) = 0;
 		virtual bool eoi() = 0;
-    virtual void getUnicodeString(tjs_string &str, bool convToNative=true) = 0;
+    virtual void getUnicodeString(u16str &str, bool convToNative=true) = 0;
     virtual int size() = 0;
     virtual int rest() = 0;
     virtual void advance(int size) = 0;

@@ -1,0 +1,90 @@
+{
+    "version": 2,
+    "configurePresets": [
+        {
+            "name": "default",
+            "description": "Default build using Ninja Multi-Config",
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "$env{BUILD_DIR}",
+            "environment": {
+                "BUILD_DIR": "build/${presetName}"
+            },
+            "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "17",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "PSDPARSE_BUILD_CLI": "ON"
+            }
+        },
+        {
+            "name": "x64-windows",
+            "description": "Windows x64 kirikiri plugin (MSVC, static vcpkg, static CRT)",
+            "inherits": "default",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/toolchains/windows.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "VCPKG_TARGET_ARCHITECTURE": "x64",
+                "VCPKG_CRT_LINKAGE": "static",
+                "VCPKG_LIBRARY_LINKAGE": "static"
+            }
+        },
+        {
+            "name": "x86-windows",
+            "description": "Windows x86 kirikiri plugin (MSVC, static vcpkg, static CRT)",
+            "inherits": "default",
+            "architecture": {
+                "value": "x86",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/toolchains/windows.cmake",
+                "VCPKG_TARGET_TRIPLET": "x86-windows-static",
+                "VCPKG_TARGET_ARCHITECTURE": "x86",
+                "VCPKG_CRT_LINKAGE": "static",
+                "VCPKG_LIBRARY_LINKAGE": "static"
+            }
+        },
+        {
+            "name": "x64-windows-python",
+            "description": "Windows x64 Python bindings (MSVC, dynamic CRT to match CPython)",
+            "inherits": "default",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/toolchains/windows.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+                "VCPKG_TARGET_ARCHITECTURE": "x64",
+                "VCPKG_CRT_LINKAGE": "dynamic",
+                "VCPKG_LIBRARY_LINKAGE": "static",
+                "PSDFILE_BUILD_KIRIKIRI_PLUGIN": "OFF",
+                "PSDFILE_BUILD_PYTHON": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "x64-windows",
+            "configurePreset": "x64-windows"
+        },
+        {
+            "name": "x86-windows",
+            "configurePreset": "x86-windows"
+        },
+        {
+            "name": "x64-windows-python",
+            "configurePreset": "x64-windows-python"
+        }
+    ]
+}

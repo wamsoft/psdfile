@@ -8,9 +8,8 @@ add_compile_options("$<$<AND:$<CXX_COMPILER_ID:MSVC>,$<COMPILE_LANGUAGE:CXX>>:/Z
 set(PROJECT_NAME psdparse)
 set(PROJECT_VERSION 1.00)
 
-project(${PROJECT_NAME} VERSION ${PROJECT_VERSION})
+project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
-find_package(Boost COMPONENTS filesystem system iostreams REQUIRED)
 find_package(ZLIB REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC
@@ -22,25 +21,23 @@ add_library(${PROJECT_NAME} STATIC
 	psdparse.h
 	psdparse.cpp
 	psdresource.cpp
+	psdwrite.cpp
 	stdafx.cpp
 )
 
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+
 target_include_directories(${PROJECT_NAME} PUBLIC
-	${Boost_INCLUDE_DIRS}
-	${TPSTUB_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	ZLIB::ZLIB
-	${Boost_LIBRARIES}
 )
 
-# 特定のファイルの最適化を無効化（メモリ関連のデバッグ用）
-if(MSVC)
-    # MSVC用設定
-    set_source_files_properties(
-		psdfile.cpp
-		psdparse.cpp
-        PROPERTIES COMPILE_FLAGS "/Od"
-    )
+# スタンドアロン CLI (PSD をロードしてヘッダを表示する smoke test 用)
+option(PSDPARSE_BUILD_CLI "Build psdparse standalone CLI for smoke testing" OFF)
+if(PSDPARSE_BUILD_CLI)
+	add_executable(psdparse_cli psd_cli.cpp)
+	target_link_libraries(psdparse_cli PRIVATE psdparse)
 endif()

@@ -34,7 +34,7 @@ namespace psd {
   rgbaCompoToRgba32(const ColorFormat &fmt, T r, T g, T b, T a)
   {
     // 値はBigEndian
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     return (uint32_t)(((a&0xff) << fmt.aShift) | ((r&0xff) << fmt.rShift) |
                       ((g&0xff) << fmt.gShift) | ((b&0xff) << fmt.bShift));
 #else
@@ -61,7 +61,7 @@ namespace psd {
                               uint32_t _r, uint32_t _g, uint32_t _b, uint32_t _a)
   {
     pun32 r, g, b, a;
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     r.i = byteSwap32(_r);
     g.i = byteSwap32(_g);
     b.i = byteSwap32(_b);
@@ -93,7 +93,7 @@ namespace psd {
   inline uint32_t
   grayToRgba32(const ColorFormat &fmt, T g, T a)
   {
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     uint8_t _g = g & 0xff;
     return (uint32_t)((a << fmt.aShift) | (_g << fmt.rShift) |
                       (_g << fmt.gShift) | (_g << fmt.bShift));
@@ -120,7 +120,7 @@ namespace psd {
   grayToRgba32<uint32_t>(const ColorFormat &fmt, uint32_t _g, uint32_t _a)
   {
     pun32 g, a;
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     g.i = byteSwap32(_g);
     a.i = byteSwap32(_a);
 #else
@@ -148,7 +148,7 @@ namespace psd {
   inline uint32_t
   cmykCompoToRgba32(const ColorFormat &fmt, T _c, T _m, T _y, T _k, T _a)
   {
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     uint8_t c = 255 - _c & 0xff;
     uint8_t m = 255 - _m & 0xff;
     uint8_t y = 255 - _y & 0xff;
@@ -188,7 +188,7 @@ namespace psd {
                               uint32_t _a)
   {
     pun32 c, m, y, k, a;
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
     c.i = byteSwap32(_c);
     m.i = byteSwap32(_m);
     y.i = byteSwap32(_y);
@@ -524,7 +524,7 @@ namespace psd {
     uint32_t readBytes    = 0;
 
     for (int y = 0; y < height; y++, lineBytesBE++) {
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
       int16_t lineBytes = byteSwap16(*lineBytesBE);
 #else
       int16_t lineBytes = *lineBytesBE;
@@ -620,7 +620,7 @@ namespace psd {
     } else if (depth == 16)  { // changed
       uint8_t *ptrData = (uint8_t *)buf;
       for (int i = 0; i < height; i++) {
-#ifdef BOOST_LITTLE_ENDIAN
+#ifdef PSD_LITTLE_ENDIAN
         // 後のチャンネルマージ時に big endian として取り扱うので
         // ここではバイトスワップせずに be のままバイト単位の計算を行う
         uint8_t *ptr = ptrData + i * width * 2;
