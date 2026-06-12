@@ -8,17 +8,8 @@
 /.vs
 /.vscode
 
-# sample PSDs (kept locally as test fixtures, not in git)
+# local test PSDs (if any are dropped here)
 *.psd
-
-# tools/psd_export.py outputs (regenerated on demand)
-/_export_*/
-
-# Python cache and build artifacts
-__pycache__/
-*.pyc
-.pytest_cache/
-*.pyd
 
 # install output
 /install/

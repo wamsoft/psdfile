@@ -1,0 +1,3 @@
+[submodule "external/psdparse"]
+	path = external/psdparse
+	url = https://github.com/wamsoft/psdparse.git

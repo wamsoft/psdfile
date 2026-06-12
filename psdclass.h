@@ -1,10 +1,8 @@
 #ifndef __PSDCLASS_H__
 #define __PSDCLASS_H__
 
-#include "stdafx.h"
-
 #include <tp_stub.h>
-#include "psdparse/psdfile.h"
+#include "psdfile.h"
 
 class PSDStorage;
 class PSDIterator;

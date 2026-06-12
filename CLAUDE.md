@@ -4,154 +4,63 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-吉里吉里Z (KirikiriZ) 用の PSD 読み込みプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 依存だったが、2026-06-12 に大規模書き換え完了：**「Boost と吉里吉里依存を psdparse から切り離して pure C++17 化、pybind11 で Python から使えるようにし、PSD 書き出し機能も追加、吉里吉里プラグインを新コアに乗せ替え」**。
+吉里吉里Z (KirikiriZ) 用の PSD 読み込みプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 直結の単一リポジトリだったが、2026-06-12 に PSD パース/書き出しコア部分を [wamsoft/psdparse](https://github.com/wamsoft/psdparse) に分離。psdfile は **psdparse を submodule で取り込んで吉里吉里バインドを行う薄いラッパー** の構成になった。
 
-ユーザー向け TJS2 API は依然として `manual.tjs` が正本。`NCB_REGISTER_CLASS(PSD)` の登録内容と齟齬が出ないように維持する。
+ユーザー向け TJS2 API は `manual.tjs` が正本。`NCB_REGISTER_CLASS(PSD)` の登録内容と齟齬が出ないように維持する。
 
-## Active rewrite plan (TaskList で進行管理中)
-
-- ✅ Phase 1a: Boost 除去 (Spirit/Phoenix/filesystem/iterator_range/mapped_file/predef-endian) → 手書きパーサ
-- ✅ Phase 1b: tp_stub 除去 (`tjs_string` → `std::u16string` = `psd::u16str`)
-- ✅ Phase 2a: pybind11 バインディング (`python/psdparse_module.cpp`)
-- ✅ Phase 2b: pytest セットアップ (`tests/`、20 テスト)
-- ✅ Phase 3: mmap バッキング復活 + StreamReader 追加 (`load`/`loadFromStream`/`load_streamed` の 3 経路、equivalence pytest あり)
-- ✅ Phase 4: PSD 書き出し (`PSDFile::save(path)` + Python `save()`)。load → save でバイト完全一致のラウンドトリップ。`psdwrite.h/cpp` の `WriterBase`/`FileWriter`/`writePSD()`。
-- ✅ Phase 5.1: ライブラリ I/F から `wchar_t` 除去 (UTF-8 char のみ)。Win32 では内部だけ wide 変換。
-- ✅ Phase 5.2: 吉里吉里プラグイン再構築。`iTJSBinaryStream` を `StreamReader::Source` でラップ → lazy I/O。`LOAD_MEMORY` 経路と stream cache 撤去。
-- ✅ Phase 5.3: ドキュメント改訂
-
-### 将来計画 (実装は保留, memory [[project-psdfile-save-modify-roadmap]] 参照)
-
-- Phase 4b: per-channel save に切替 → レイヤ削除/複製対応
-- Phase 4c: LayerExtraData::rawBytes を捨てて field 再シリアライズ (名前/blend mode 変更)
-- Phase 4d: RLE encoder + 新規 PSDFile 作成 API
-
-## アーキテクチャ (現状)
+## 構造
 
 ```
-psdparse/                       ← pure C++17 ライブラリ (吉里吉里非依存)
-  psdbase.h                       endian/型/共通アトム、PSD_LITTLE_ENDIAN
-  psddata.h, psddesc.h            Data 構造 (Header, LayerInfo, Descriptor, …)
-                                  LayerExtraData::rawBytes と Data::globalLayerMaskInfoRaw /
-                                  layerAndMaskTrailing は ラウンドトリップ save 用に parse 時に保持。
-  psdparse.h                      MemoryReader / StreamReader (IteratorBase 派生) と parsePSD 宣言
-  psdparse.cpp                    手書き parser (SubBlock RAII + cloneRange 経由で sub-range bounded)
-  psdwrite.h/cpp                  WriterBase / FileWriter / writePSD() (patch-back サイズ書き戻し方式)
-  psdfile.h/cpp                   PSDFile (load/loadFromMemory/loadFromReader/loadFromStream/save)
-  psdimage.cpp                    レイヤ/合成画像の decode (RLE, zip, ColorMode 切替)
-  psddesc.cpp, psdlayer.cpp, psdresource.cpp, bmp.cpp
-python/                         ← pybind11 モジュール (mmap or stream で PSDFile を Python に晒す)
-  psdparse_module.cpp
-  CMakeLists.txt
-tests/                          ← pytest (sample PSD 2 件で 27 テスト)
-  conftest.py, test_header.py, test_layers.py, test_images.py, test_save.py
-tools/                          ← 開発者向けスクリプト
-  psd_export.py                   PSD → layers.json + merged.png + per-layer PNGs (Pillow 利用)
-psdclass.h, psdclass.cpp, psdclass_loadstream.cpp, main.cpp
-                                ← 吉里吉里プラグイン (NCB 登録、`psd://` ストレージ)
-                                  psdclass_loadstream.cpp の TJSBinaryStreamSource が
-                                  iTJSBinaryStream を StreamReader::Source として晒し、
-                                  PSD::loadStream が StreamReader 経由で loadFromReader を
-                                  呼ぶ (lazy I/O)。LOAD_MEMORY 経路は撤去。
-CMakeLists.txt                  ← top: kirikiri プラグインと Python モジュールを option で出し分け
-CMakePresets.json               ← x64-windows (kirikiri) / x64-windows-python (Python) を分離
-                                  static CRT (kirikiri) と dynamic CRT (Python) は同居不能なので別 build dir
+psdfile/                         ← このリポジトリ
+├── CMakeLists.txt               psdfile.dll の build 設定
+├── CMakePresets.json            x64-windows (kirikiri Debug/Release)、x86-windows
+├── Makefile                     make PRESET=x64-windows BUILD_TYPE=Debug build
+├── vcpkg.json                   zlib のみ (psdparse から継承)
+├── manual.tjs                   ★ TJS2 API 正本
+├── psdclass.h                   PSD クラスヘッダ
+├── psdclass.cpp                 PSD クラス本体 (getLayerData / getBlend / ストレージ等)
+├── psdclass_loadstream.cpp      iTJSBinaryStream → StreamReader::Source ラッパ
+├── main.cpp                     PSDStorage (psd:// ストレージ) + NCB 登録
+└── external/
+    └── psdparse/                ★ submodule (wamsoft/psdparse)
 ```
 
-### IteratorBase の遅延参照は HARD 要件
+psdparse 側の C++ ライブラリ、Python バインディング、pytest、tools (`psd_export.py`)、Python API ドキュメント、将来計画 (Phase 4b/c/d) は全部 [submodule 先](https://github.com/wamsoft/psdparse) を見ること。
 
-`psd::IteratorBase` は parser/decode の唯一の I/O 抽象。**`std::vector<uint8_t>` への eager コピーは絶対 NG** (元 mmap 実装の存在理由はこれ)。Phase 3 で `fileBuffer_` vector を Win32 CreateFileMapping ベースに戻した。詳細は memory `feedback-lazy-iterator` 参照。
+## Clone 手順
 
-実装ヒエラルキー:
-
-```
-IteratorBase (psdbase.h, 純粋仮想 — parser はこれだけ見る)
-├── MemoryReader   (psdparse.h)  ... mmap/バッファ向け
-└── StreamReader   (psdparse.h)  ... 汎用ストリーム
-    └── Source (純粋仮想)
-        ├── IStreamSource         (psdfile.cpp 無名 ns)         ... std::istream
-        └── TJSBinaryStreamSource (psdclass_loadstream.cpp 無名 ns) ... iTJSBinaryStream
+```bash
+git clone --recursive https://github.com/wamsoft/psdfile.git
+# or:
+git clone https://github.com/wamsoft/psdfile.git
+cd psdfile && git submodule update --init --recursive
 ```
 
-`clone()` / `cloneOffset(int)` / `cloneRange(int, int)` で sub-reader を切り出す。`cloneRange` は **size-prefixed block を厳密にバウンディング** するために必須 (Phase 3 で導入。これがないと不正な dataSize で無限ループに陥る → 18.7 GB 食う事故あり、2026-06-12)。
+## ビルド
 
-### parser 安全条件
-
-`parseImageResources` / `parseLayerExtraData` の while ループには **前進保証** (`posAfter <= posBefore` で break) を必ず入れる。これがないと garbage 入力で無限ループする。
-
-## ビルド & 検証
-
-詳細は memory `build-msvc-preset` を見る。要点:
+要件: MSVC、CMake 3.16+、[vcpkg](https://vcpkg.io/) (`VCPKG_ROOT` 必須)、隣接の `tp_stub` / `ncbind` (`D:\test\tp_stub`、`D:\test\ncbind` を既定で見る。`TPSTUB_DIR` で上書き可)。
 
 ```powershell
-$env:VCPKG_ROOT = 'd:\vcpkg'   # msys2 bash 経由起動時は継承済みなので不要
+$env:VCPKG_ROOT = 'd:\vcpkg'
 
-# Makefile 経由 (推奨。デフォルトは PRESET=x64-windows / BUILD_TYPE=Release)
-make PRESET=x64-windows-python prebuild   # cmake configure
-make PRESET=x64-windows-python build       # cmake --build
+# Debug ビルド
+make PRESET=x64-windows BUILD_TYPE=Debug build
 
-# 直接 cmake で叩く場合:
-cmake --preset x64-windows                 # kirikiri プラグイン
-cmake --build --preset x64-windows --config Debug
-cmake --preset x64-windows-python          # Python モジュール
-cmake --build --preset x64-windows-python --config Release
-
-# テスト (build dir を conftest.py が sys.path に挿入)
-C:\Users\go\.venv\Scripts\python.exe -m pytest -v
+# Release ビルド
+make PRESET=x64-windows BUILD_TYPE=Release build
 ```
 
 成果物:
 - `build/x64-windows/Debug/psdfile.dll`
-- `build/x64-windows/psdparse/Debug/psdparse_cli.exe`
-- `build/x64-windows-python/python/Release/psdparse.cp312-win_amd64.pyd`
+- `build/x64-windows/external/psdparse/psdparse/Debug/psdparse_cli.exe` (psdparse 側 CLI、smoke test 用)
 
-依存: vcpkg で zlib のみ (Phase 1a 後)。Boost は完全に削除済み。
+依存: vcpkg で zlib のみ。Boost は完全に削除済み。
 
 **重要なハマりポイント:**
-- clang LSP は tp_stub.h / ncbind.hpp / pybind11.h を解決できず大量の偽 error を出す。CMake/MSVC ビルドは通るので無視する。
-- Python は msys2 のを引きやすい (CMake が `find_program(python)` で msys2 側を見つける)。`Python3_EXECUTABLE` を明示するか、PATH を整える。`python/CMakeLists.txt` で `PYBIND11_FINDPYTHON ON` 経由で modern FindPython を使うようにしてある。
-- バックグラウンドの Python ループは禁止。タイムアウト付きフォアグラウンドのみ。
+- clang LSP は tp_stub.h / ncbind.hpp / submodule 先のヘッダを解決できず大量の偽 error を出す。CMake/MSVC ビルドは通るので無視する。
+- submodule を update してないと configure 時に `external/psdparse/CMakeLists.txt` が無いと言って fail する。`git submodule update --init --recursive` で修復。
 
-## 行儀よく避ける改変
-
-- `IteratorBase` の遅延参照を vector に Blob 化する変更は要件違反 (Phase 3 でこれをやって戻した経緯あり)。
-- Spirit 文法を「復活」させる変更も避ける (Boost 全部依存に戻る)。
-- `psdclass*.cpp` の `/Od` 強制は元々 Boost 起因のバグ回避だったので Phase 1a (Boost 除去) 完了に伴って外した (2026-06-12)。再度 `/Od` を入れる必要はない。
-- `manual.tjs` を更新せずに NCB 登録だけ変更しない。manual.tjs が user-facing 正本。
-- `PSD::~PSD()` の `clearData()` 明示呼び出しは virtual dispatch のため必要。`= default` にしない。
-
-## ライブラリ I/F 規約 (Phase 5.1 後)
-
-- すべての public パス引数は **UTF-8 char\*** (例: `psd::PSDFile::load(const char*)`, `psd::FileWriter(const char*)`)
-- Win32 では `psd::utf8ToWide` (psdbase.h, inline) で内部だけ UTF-16 に変換してから OS API へ
-- `wchar_t` overload は廃止。kirikiri 側 (`tjs_char`/`ttstr`) や Python 側 (`str`) で呼び出し前に UTF-8 への変換責任を負う
-- pybind11 は Python `str` → `std::string` を自動で UTF-8 エンコードするので、Python から呼ぶ場合は意識不要
-- 吉里吉里側はファイル名を `ttstr` で受け、`TVPCreateStream(filename, TJS_BS_READ)` で開いてから `iTJSBinaryStream` を `TJSBinaryStreamSource` でラップする経路に統一 (パス文字列を C++ コアに直接渡すケースは無くなった)
-
-## Phase 4 ラウンドトリップ save の仕組み
-
-`load(p) -> save(q)` で q が p とバイト完全一致するように、構造復元コストの高い
-領域は parse 時に **生バイトの IteratorBase を別途保持** している:
-
-- `LayerExtraData::rawBytes` — layer record の extra data ブロック全域 (layer mask /
-  blending range / Pascal 名 / additional layer info 全部入り)
-- `Data::globalLayerMaskInfoRaw` — global layer mask info ブロックの本体
-- `Data::layerAndMaskTrailing` — layer-and-mask info の global mask より後ろの
-  追加 info (Lr16/Lr32 等、未解釈)
-- `ImageResourceInfo::data`, `AdditionalLayerInfo::data` — 元から保持
-- `Data::colorModeIterator`, `Data::channelImageData`, `Data::imageData` — 元から保持
-
-これらが揃っているので、`writePSD()` は構造フィールド (Header / 各 layer record /
-チャネル数等) を再シリアライズしつつ、内部ブロックは全部 `copyAllFrom(iterator)` で
-ドカっと転送するだけ。「parse して書き戻すと壊れる」事故を防ぐため、追加 info の
-スキップは絶対 NG (この trailing capture が無いと UI PSD で 19KB 失う)。
-
-**現状の save の制約**: 上記の通り、load 元の iterator/raw bytes に強く依存するので
-**load → save の bit-identical round-trip 専用**。レイヤ追加/削除/中身書き換えは
-未対応。改変対応 (per-channel save / field 再シリアライズ / RLE encoder 追加) の
-段階計画は memory `project-psdfile-save-modify-roadmap` 参照。
-
-## 吉里吉里プラグイン側の構造 (Phase 5.2 後)
+## アーキテクチャ (kirikiri 側のみ)
 
 ```
 PSD : public psd::PSDFile        (psdclass.h)
@@ -170,6 +79,20 @@ psdclass_loadstream.cpp 無名 ns
     └── read(offset, len) は Seek + Read
 ```
 
-u16str → ttstr 変換は `psdclass.cpp` の `u16ToTjs(const psd::u16str&)` (length 指定の
-`ttstr(const tjs_char*, tjs_int)` で構成)。`tjs_char == char16_t` 前提なので Windows
-専用前提だが psdfile.dll は Windows ターゲットのみなので問題なし。
+`u16str → ttstr` 変換は `psdclass.cpp` の `u16ToTjs(const psd::u16str&)` (length 指定の `ttstr(const tjs_char*, tjs_int)` で構成)。`tjs_char == char16_t` 前提なので Windows 専用前提だが psdfile.dll は Windows ターゲットのみなので問題なし。
+
+psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / StreamReader / WriterBase / round-trip save の仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) を参照。
+
+## 行儀よく避ける改変
+
+- `manual.tjs` を更新せずに `NCB_REGISTER_CLASS(PSD)` の登録だけ変更しない (manual.tjs が user-facing 正本)。
+- `PSD::~PSD()` の `clearData()` 明示呼び出しは virtual dispatch のため必要。`= default` にしない。
+- psdparse 側の改修が必要なときは external/psdparse で submodule を編集 → psdparse 側で commit/push → psdfile 側で submodule ref を bump → psdfile commit、の順。psdfile で submodule のファイルを直接編集して放置しない。
+- 吉里吉里依存 (tp_stub, ncbind, tjs_char, ttstr) を psdparse 側に滲ませない。submodule の独立性が崩れる。
+
+## TJS2 API 変更時の手順
+
+1. `psdclass.cpp` で実装変更
+2. `psdclass.cpp` 末尾の `NCB_REGISTER_CLASS(PSD)` で公開
+3. `manual.tjs` に同じシグネチャを追記
+4. ビルド (`make PRESET=x64-windows BUILD_TYPE=Debug build`) で smoke 確認

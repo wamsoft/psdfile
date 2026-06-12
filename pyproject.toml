@@ -1,6 +1,0 @@
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers"]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-]
