@@ -3,6 +3,16 @@
 
 #include <string>
 
+#ifdef _WIN32
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+  #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+  #endif
+  #include <windows.h>
+#endif
+
 #ifdef _DEBUG
 #define dprint(...) printf(__VA_ARGS__);
 #else
@@ -107,6 +117,22 @@ namespace psd {
             (((x) & 0x0000ff00) <<  8) |
             (((x) & 0x000000ff) << 24));
   }
+
+#ifdef _WIN32
+  // UTF-8 → UTF-16 厳密変換。public I/F (load/save/FileWriter 等) は UTF-8
+  // のみと約束しているので、不正バイトは MB_ERR_INVALID_CHARS で弾く。
+  // 戻り値が空文字列なら変換失敗。
+  inline std::wstring utf8ToWide(const char *u8) {
+    if (!u8) return {};
+    int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, u8, -1, nullptr, 0);
+    if (wlen <= 0) return {};
+    std::wstring w((size_t)wlen, L'\0');
+    int got = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, u8, -1, &w[0], wlen);
+    if (got <= 0) return {};
+    if (!w.empty() && w.back() == L'\0') w.pop_back();
+    return w;
+  }
+#endif
 
   inline uint64_t byteSwap64(uint64_t x) {
     return ((x >> 56) |

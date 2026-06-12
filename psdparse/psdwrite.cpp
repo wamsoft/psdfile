@@ -12,18 +12,14 @@ namespace psd {
 
 FileWriter::FileWriter(const char *path) : fp_(nullptr) {
 #ifdef _WIN32
-  // narrow path は ACP 解釈で内部で wide に変換 (fopen は ACP 限定)。
-  fp_ = std::fopen(path, "wb");
+  // fopen は ANSI 限定なので UTF-8 → UTF-16 → _wfopen で開く。
+  std::wstring w = utf8ToWide(path);
+  if (w.empty()) return;
+  fp_ = _wfopen(w.c_str(), L"wb");
 #else
   fp_ = std::fopen(path, "wb");
 #endif
 }
-
-#ifdef _WIN32
-FileWriter::FileWriter(const wchar_t *path) : fp_(nullptr) {
-  fp_ = _wfopen(path, L"wb");
-}
-#endif
 
 FileWriter::~FileWriter() { close(); }
 

@@ -35,8 +35,8 @@ namespace psd {
 
     bool isLoaded;
 
+    // filename は UTF-8。Win32 では内部で UTF-16 に変換してから OS API を叩く。
     bool load(const char *filename);
-    bool load(const wchar_t *filename);
     bool loadFromMemory(const uint8_t *data, size_t size);
     bool loadFromReader(IteratorBase &reader);
     // 任意の seekable な std::istream を全領域のサイズ付きで受ける。
@@ -49,12 +49,9 @@ namespace psd {
     // PSDFile を空に戻す。mmap を unmap し、vector を解放する。
     void clearData() override;
 
-    // 現在ロード済みの内容を PSD ファイルとして path に書き出す。
+    // 現在ロード済みの内容を PSD ファイルとして path (UTF-8) に書き出す。
     // 失敗 (open エラー / 未ロード) で false。
     bool save(const char *filename);
-#ifdef _WIN32
-    bool save(const wchar_t *filename);
-#endif
 
     // 画像データ取得インタフェース (バッファピッチが０の場合は full fill)
     bool getMergedImage(void *buf, const ColorFormat &format, int bufPitchByte);

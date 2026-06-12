@@ -140,12 +140,12 @@ PYBIND11_MODULE(psdparse, m) {
   py::class_<psd::PSDFile>(m, "PSDFile")
     .def(py::init<>())
     .def("load",
-         [](psd::PSDFile &self, const std::wstring &path) {
+         [](psd::PSDFile &self, const std::string &path) {
             return self.load(path.c_str());
          },
          py::arg("path"),
-         "Memory-map the file at `path` and parse. The file stays open and "
-         "layer pixels are paged in lazily.")
+         "Memory-map the file at `path` (UTF-8) and parse. The file stays "
+         "open and layer pixels are paged in lazily.")
     .def("load_bytes",
          [](psd::PSDFile &self, py::bytes b) {
             py::buffer_info info(py::buffer(b).request());
@@ -155,24 +155,30 @@ PYBIND11_MODULE(psdparse, m) {
          "Parse a PSD already loaded into a Python bytes object. The bytes "
          "are copied into an internal vector.")
     .def("load_streamed",
-         [](psd::PSDFile &self, const std::wstring &path) {
+         [](psd::PSDFile &self, const std::string &path) {
             // std::ifstream + StreamReader 経由 (mmap を使わずシークと read のみで処理)。
-            // PSDFile 側の所有権版 loadFromStream に渡し、parse 後も stream を維持。
+            // Win32 では ifstream を unicode path で開くため UTF-8 → wide。
+#ifdef _WIN32
+            std::wstring wpath = psd::utf8ToWide(path.c_str());
+            if (wpath.empty()) return false;
+            auto s = std::make_unique<std::ifstream>(wpath, std::ios::binary);
+#else
             auto s = std::make_unique<std::ifstream>(path, std::ios::binary);
+#endif
             if (!s || !*s) return false;
             return self.loadFromStream(std::move(s));
          },
          py::arg("path"),
-         "Open `path` as a std::ifstream and parse via StreamReader. "
+         "Open `path` (UTF-8) as a std::ifstream and parse via StreamReader. "
          "Demonstrates that the parser also accepts arbitrary seekable streams "
          "(this is the code path the kirikiri plugin will use on top of "
          "iTJSBinaryStream).")
     .def("save",
-         [](psd::PSDFile &self, const std::wstring &path) {
+         [](psd::PSDFile &self, const std::string &path) {
             return self.save(path.c_str());
          },
          py::arg("path"),
-         "Save the currently loaded data as a PSD file at `path`. "
+         "Save the currently loaded data as a PSD file at `path` (UTF-8). "
          "Round-trip-fidelity is the target: load(p) -> save(q) yields a PSD "
          "with structurally identical layers/header/image data.")
     .def_readonly("is_loaded", &psd::PSDFile::isLoaded)

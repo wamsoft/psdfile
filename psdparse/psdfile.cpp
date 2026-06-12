@@ -116,70 +116,24 @@ void PSDFile::clearData() {
 }
 
 bool PSDFile::load(const char *filename) {
+  clearData();
+  isLoaded = false;
 #ifdef _WIN32
-  // narrow → wide。argv 経由は ACP (日本語環境では CP932) が普通なので ACP 優先。
-  // UTF-8 strict 解釈には失敗 (MB_ERR_INVALID_CHARS) させて確実に切り分け。
-  auto tryConvert = [&](UINT cp, DWORD flags) -> std::wstring {
-    int wlen = MultiByteToWideChar(cp, flags, filename, -1, nullptr, 0);
-    if (wlen <= 0) return {};
-    std::wstring w((size_t)wlen, L'\0');
-    int got = MultiByteToWideChar(cp, flags, filename, -1, &w[0], wlen);
-    if (got <= 0) return {};
-    if (!w.empty() && w.back() == L'\0') w.pop_back();
-    return w;
-  };
-  std::wstring w = tryConvert(CP_ACP, 0);
-  if (w.empty()) w = tryConvert(CP_UTF8, MB_ERR_INVALID_CHARS);
+  std::wstring w = utf8ToWide(filename);
   if (w.empty()) return false;
-  return load(w.c_str());
+  mapping_ = Mapping::open(w.c_str());
 #else
-  clearData();
-  isLoaded = false;
   mapping_ = Mapping::open(filename);
+#endif
   if (!mapping_) {
-    std::cerr << "mmap failed for: '" << filename << "'\n";
+    std::cerr << "mmap failed for: '" << (filename ? filename : "(null)") << "'\n";
     return false;
   }
   MemoryReader reader(mapping_->data(), (int)mapping_->size());
-  if (!parsePSD(reader, *this)) {
-    clearData();
-    return false;
-  }
+  if (!parsePSD(reader, *this)) { clearData(); return false; }
   isLoaded = processParsed();
   if (!isLoaded) clearData();
   return isLoaded;
-#endif
-}
-
-bool PSDFile::load(const wchar_t *filename) {
-#ifdef _WIN32
-  clearData();
-  isLoaded = false;
-  mapping_ = Mapping::open(filename);
-  if (!mapping_) {
-    // ANSI で再試行 (ファイル名 encoding の問題を吸収)
-    int nlen = WideCharToMultiByte(CP_ACP, 0, filename, -1, nullptr, 0, nullptr, nullptr);
-    if (nlen > 0) {
-      std::vector<char> nbuf((size_t)nlen);
-      WideCharToMultiByte(CP_ACP, 0, filename, -1, nbuf.data(), nlen, nullptr, nullptr);
-      std::wcerr << L"mmap failed for: '" << filename << L"'\n";
-    }
-    return false;
-  }
-  MemoryReader reader(mapping_->data(), (int)mapping_->size());
-  if (!parsePSD(reader, *this)) {
-    clearData();
-    return false;
-  }
-  isLoaded = processParsed();
-  if (!isLoaded) clearData();
-  return isLoaded;
-#else
-  // POSIX: wchar_t -> narrow に落としてから処理
-  std::wstring ws(filename);
-  std::string narrow(ws.begin(), ws.end()); // crude but acceptable for ASCII paths
-  return load(narrow.c_str());
-#endif
 }
 
 bool PSDFile::loadFromMemory(const uint8_t *data, size_t size) {
@@ -263,15 +217,6 @@ bool PSDFile::save(const char *filename) {
   if (!w.ok()) return false;
   return writePSD(w, *this);
 }
-
-#ifdef _WIN32
-bool PSDFile::save(const wchar_t *filename) {
-  if (!isLoaded) return false;
-  FileWriter w(filename);
-  if (!w.ok()) return false;
-  return writePSD(w, *this);
-}
-#endif
 
 bool PSDFile::loadFromStream(std::unique_ptr<std::istream> stream) {
   // clearData() を先にやってから ownedStream_ にセットする。

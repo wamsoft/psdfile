@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-吉里吉里Z (KirikiriZ) 用の PSD 読み込みプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 依存だったが、2026-06-12 から大規模書き換え中：**「Boost と吉里吉里依存を psdparse から切り離して pure C++17 化、pybind11 で Python から使えるようにし、PSD 書き出し機能も追加する」** プロジェクトの途中。
+吉里吉里Z (KirikiriZ) 用の PSD 読み込みプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 依存だったが、2026-06-12 に大規模書き換え完了：**「Boost と吉里吉里依存を psdparse から切り離して pure C++17 化、pybind11 で Python から使えるようにし、PSD 書き出し機能も追加、吉里吉里プラグインを新コアに乗せ替え」**。
 
 ユーザー向け TJS2 API は依然として `manual.tjs` が正本。`NCB_REGISTER_CLASS(PSD)` の登録内容と齟齬が出ないように維持する。
 
@@ -16,7 +16,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ Phase 2b: pytest セットアップ (`tests/`、20 テスト)
 - ✅ Phase 3: mmap バッキング復活 + StreamReader 追加 (`load`/`loadFromStream`/`load_streamed` の 3 経路、equivalence pytest あり)
 - ✅ Phase 4: PSD 書き出し (`PSDFile::save(path)` + Python `save()`)。load → save でバイト完全一致のラウンドトリップ。`psdwrite.h/cpp` の `WriterBase`/`FileWriter`/`writePSD()`。
-- ⏳ Phase 5: 吉里吉里プラグインを新コアに乗せ替え
+- ✅ Phase 5.1: ライブラリ I/F から `wchar_t` 除去 (UTF-8 char のみ)。Win32 では内部だけ wide 変換。
+- ✅ Phase 5.2: 吉里吉里プラグイン再構築。`iTJSBinaryStream` を `StreamReader::Source` でラップ → lazy I/O。`LOAD_MEMORY` 経路と stream cache 撤去。
+- ✅ Phase 5.3: ドキュメント改訂
+
+### 将来計画 (実装は保留, memory [[project-psdfile-save-modify-roadmap]] 参照)
+
+- Phase 4b: per-channel save に切替 → レイヤ削除/複製対応
+- Phase 4c: LayerExtraData::rawBytes を捨てて field 再シリアライズ (名前/blend mode 変更)
+- Phase 4d: RLE encoder + 新規 PSDFile 作成 API
 
 ## アーキテクチャ (現状)
 
@@ -39,9 +47,12 @@ tests/                          ← pytest (sample PSD 2 件で 27 テスト)
   conftest.py, test_header.py, test_layers.py, test_images.py, test_save.py
 tools/                          ← 開発者向けスクリプト
   psd_export.py                   PSD → layers.json + merged.png + per-layer PNGs (Pillow 利用)
-psdclass.cpp, psdclass_loadmem.cpp, psdclass_loadstream.cpp, psdclass_loadstreambase.cpp, main.cpp
+psdclass.h, psdclass.cpp, psdclass_loadstream.cpp, main.cpp
                                 ← 吉里吉里プラグイン (NCB 登録、`psd://` ストレージ)
-                                  Phase 5 で StreamReader::Source 経由に書き換える予定
+                                  psdclass_loadstream.cpp の TJSBinaryStreamSource が
+                                  iTJSBinaryStream を StreamReader::Source として晒し、
+                                  PSD::loadStream が StreamReader 経由で loadFromReader を
+                                  呼ぶ (lazy I/O)。LOAD_MEMORY 経路は撤去。
 CMakeLists.txt                  ← top: kirikiri プラグインと Python モジュールを option で出し分け
 CMakePresets.json               ← x64-windows (kirikiri) / x64-windows-python (Python) を分離
                                   static CRT (kirikiri) と dynamic CRT (Python) は同居不能なので別 build dir
@@ -58,8 +69,8 @@ IteratorBase (psdbase.h, 純粋仮想 — parser はこれだけ見る)
 ├── MemoryReader   (psdparse.h)  ... mmap/バッファ向け
 └── StreamReader   (psdparse.h)  ... 汎用ストリーム
     └── Source (純粋仮想)
-        ├── IStreamSource              (psdfile.cpp 無名 ns)  ... std::istream
-        └── [Phase 5] ITJSBinaryStreamSource ... iTJSBinaryStream (kirikiri)
+        ├── IStreamSource         (psdfile.cpp 無名 ns)         ... std::istream
+        └── TJSBinaryStreamSource (psdclass_loadstream.cpp 無名 ns) ... iTJSBinaryStream
 ```
 
 `clone()` / `cloneOffset(int)` / `cloneRange(int, int)` で sub-reader を切り出す。`cloneRange` は **size-prefixed block を厳密にバウンディング** するために必須 (Phase 3 で導入。これがないと不正な dataSize で無限ループに陥る → 18.7 GB 食う事故あり、2026-06-12)。
@@ -109,9 +120,13 @@ C:\Users\go\.venv\Scripts\python.exe -m pytest -v
 - `manual.tjs` を更新せずに NCB 登録だけ変更しない。manual.tjs が user-facing 正本。
 - `PSD::~PSD()` の `clearData()` 明示呼び出しは virtual dispatch のため必要。`= default` にしない。
 
-## 既知の TODO (Phase 5 で対応)
+## ライブラリ I/F 規約 (Phase 5.1 後)
 
-- Phase 5: 吉里吉里プラグインを `StreamReader::Source` 経由の新コアに乗せ替え (`u16_to_tjs` adapter は暫定処理。本来は `std::u16string` ↔ `ttstr` の正式変換に置き換える)
+- すべての public パス引数は **UTF-8 char\*** (例: `psd::PSDFile::load(const char*)`, `psd::FileWriter(const char*)`)
+- Win32 では `psd::utf8ToWide` (psdbase.h, inline) で内部だけ UTF-16 に変換してから OS API へ
+- `wchar_t` overload は廃止。kirikiri 側 (`tjs_char`/`ttstr`) や Python 側 (`str`) で呼び出し前に UTF-8 への変換責任を負う
+- pybind11 は Python `str` → `std::string` を自動で UTF-8 エンコードするので、Python から呼ぶ場合は意識不要
+- 吉里吉里側はファイル名を `ttstr` で受け、`TVPCreateStream(filename, TJS_BS_READ)` で開いてから `iTJSBinaryStream` を `TJSBinaryStreamSource` でラップする経路に統一 (パス文字列を C++ コアに直接渡すケースは無くなった)
 
 ## Phase 4 ラウンドトリップ save の仕組み
 
@@ -130,3 +145,31 @@ C:\Users\go\.venv\Scripts\python.exe -m pytest -v
 チャネル数等) を再シリアライズしつつ、内部ブロックは全部 `copyAllFrom(iterator)` で
 ドカっと転送するだけ。「parse して書き戻すと壊れる」事故を防ぐため、追加 info の
 スキップは絶対 NG (この trailing capture が無いと UI PSD で 19KB 失う)。
+
+**現状の save の制約**: 上記の通り、load 元の iterator/raw bytes に強く依存するので
+**load → save の bit-identical round-trip 専用**。レイヤ追加/削除/中身書き換えは
+未対応。改変対応 (per-channel save / field 再シリアライズ / RLE encoder 追加) の
+段階計画は memory `project-psdfile-save-modify-roadmap` 参照。
+
+## 吉里吉里プラグイン側の構造 (Phase 5.2 後)
+
+```
+PSD : public psd::PSDFile        (psdclass.h)
+├── load(ttstr filename)         filename → TVPGetPlacedPath → loadStream
+├── loadStream(ttstr file)        TVPCreateStream → TJSBinaryStreamSource (shared_ptr)
+│                                  → psd::StreamReader → loadFromReader
+├── clearData()                   ← virtual。PSDFile::clearData() を呼ぶと iterator
+│                                  群が消えて shared_ptr<Source> refcount が落ち、
+│                                  Source dtor が iTJSBinaryStream::Destruct() を呼ぶ
+└── 既存の getLayerData / getBlend / openLayerImage / etc.
+
+psdclass_loadstream.cpp 無名 ns
+└── TJSBinaryStreamSource : public psd::StreamReader::Source
+    ├── ctor で iTJSBinaryStream* の所有権を取る
+    ├── dtor で Destruct() を呼ぶ
+    └── read(offset, len) は Seek + Read
+```
+
+u16str → ttstr 変換は `psdclass.cpp` の `u16ToTjs(const psd::u16str&)` (length 指定の
+`ttstr(const tjs_char*, tjs_int)` で構成)。`tjs_char == char16_t` 前提なので Windows
+専用前提だが psdfile.dll は Windows ターゲットのみなので問題なし。

@@ -67,12 +67,10 @@ public:
 };
 
 // FILE * ベースの WriterBase 実装。fopen/fwrite/_fseeki64/_ftelli64 使用。
+// path は UTF-8 (Win32 では内部で UTF-16 → _wfopen)。
 class FileWriter : public WriterBase {
 public:
   explicit FileWriter(const char *path);
-#ifdef _WIN32
-  explicit FileWriter(const wchar_t *path);
-#endif
   ~FileWriter() override;
   FileWriter(const FileWriter &) = delete;
   FileWriter &operator=(const FileWriter &) = delete;

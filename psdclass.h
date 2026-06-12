@@ -1,8 +1,6 @@
 #ifndef __PSDCLASS_H__
 #define __PSDCLASS_H__
 
-//#define LOAD_MEMORY
-
 #include "stdafx.h"
 
 #include <tp_stub.h>
@@ -150,25 +148,13 @@ protected:
 	iTJSDispatch2 *objthis; ///< 自己オブジェクト情報の参照
 	ttstr dname; ///< 登録用ベース名
 
-#ifdef LOAD_MEMORY
-	unsigned char *mBuffer; // オンメモリ保持用バッファ
-	bool loadMemory(const ttstr &filename);
-	void clearMemory();
-#else
-	// ストリームから読み込み
-	iTJSBinaryStream *pStream;
-	tTVInteger mStreamSize;
+	/**
+	 * iTJSBinaryStream をストリームとしてロードする。
+	 * Source ラッパ + StreamReader 経由で psdparse の lazy iterator に
+	 * 流す。バッファ全コピーは行わない。
+	 */
 	bool loadStream(const ttstr &filename);
-	void clearStream();
-	unsigned char &getStreamValue(const tTVInteger &pos);
-	void copyToBuffer(uint8_t *buf, tTVInteger pos, int size);
 
-	//< PSDファイル読み込みキャッシュ用バッファ
-	tTVInteger mBufferPos;
-	tjs_uint mBufferSize;
-	unsigned char mBuffer[4*1024];
-#endif
-	
 	/**
 	 * レイヤ番号が適切かどうか判定
 	 * @param no レイヤ番号

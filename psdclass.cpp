@@ -3,13 +3,14 @@
 
 #define BMPEXT TJS_W(".bmp")
 
-// Phase 1b の暫定アダプタ: psdparse 側 Unicode 文字列は std::u16string で
-// 保持される。Windows では wchar_t/char16_t がどちらも 16bit でビット互換な
-// ので reinterpret_cast で受け流す。Phase 5 で正式な変換に置き換える。
-static inline const tjs_char *u16_to_tjs(const psd::u16str &s) {
+// psdparse の Unicode 文字列 (std::u16string = UTF-16 host-order) を ttstr に
+// 変換。Windows では tjs_char == char16_t (どちらも 16bit UTF-16 code unit)
+// なので bit-level reinterpret で問題ない。length 指定で embedded NUL も保存。
+static inline ttstr u16ToTjs(const psd::u16str &s) {
 	static_assert(sizeof(tjs_char) == sizeof(char16_t),
-	              "tjs_char must be 16-bit for this passthrough cast");
-	return reinterpret_cast<const tjs_char *>(s.c_str());
+	              "tjs_char must be 16-bit UTF-16 code unit");
+	return ttstr(reinterpret_cast<const tjs_char *>(s.data()),
+	             (tjs_int)s.length());
 }
 
 // ncb.typeconv: cast: enum->int
@@ -93,16 +94,9 @@ public:
 /**
  * コンストラクタ
  */
-PSD::PSD(iTJSDispatch2 *objthis) : objthis(objthis)
-#ifdef LOAD_MEMORY
-, mBuffer(0)
-#else
-, pStream(0)
-, mStreamSize(0)
-, mBufferPos(0)
-, mBufferSize(0)
-#endif
-, storageStarted(false)
+PSD::PSD(iTJSDispatch2 *objthis)
+	: objthis(objthis)
+	, storageStarted(false)
 {
 };
 
@@ -141,26 +135,12 @@ bool
 PSD::load(ttstr filename)
 {
 	ttstr file = TVPGetPlacedPath(filename);
-	if (!file.length()) {
-		return false;
-	} else {
-#ifdef LOAD_MEMORY
-		if (!TJS_strchr(file.c_str(), '>')) {
-			// ローカルファイルなので直接読み込む
-			TVPGetLocalName(file);
-			psd::PSDFile::load(file.c_str());
-		} else {
-			// メモリに読み込んでロード
-			loadMemory(file);
-		}
-#else
-		// ストリームとしてロード
-		loadStream(file);
-#endif
-	}
-	if (isLoaded) {
-		addToStorage(filename);
-	}
+	if (!file.length()) return false;
+	// 常に iTJSBinaryStream 経由でロード (ローカル/アーカイブ問わず)。
+	// loadStream は StreamReader::Source ラッパ経由で psdparse の lazy
+	// iterator に流すので、ファイル全体をメモリに読まない。
+	loadStream(file);
+	if (isLoaded) addToStorage(filename);
 	return isLoaded;
 }
 
@@ -171,13 +151,10 @@ PSD::clearData()
 	layerIdIdxMap.clear();
 	pathMap.clear();
 	storageStarted = false;
-
+	// PSDFile::clearData が channelImageData / imageData 等の iterator を
+	// 破棄 → shared_ptr<Source> の refcount が落ちて Source が消える →
+	// iTJSBinaryStream も自動解放される。
 	psd::PSDFile::clearData();
-#ifdef LOAD_MEMORY
-	clearMemory();
-#else
-	clearStream();
-#endif
 }
 	
 /**
@@ -204,7 +181,7 @@ PSD::layname(psd::LayerInfo &lay)
 {
 	ttstr ret;
 	if (!lay.layerNameUnicode.empty()) {
-		ret = ttstr(u16_to_tjs(lay.layerNameUnicode));
+		ret = u16ToTjs(lay.layerNameUnicode);
 	} else {
 		ret = ttstr(lay.layerName.c_str());
 	}
@@ -464,7 +441,7 @@ PSD::getSlices()
 			dict.SetValue(TJS_W("left"),   sr.boundingLeft);
 			dict.SetValue(TJS_W("bottom"), sr.boundingBottom);
 			dict.SetValue(TJS_W("right"),  sr.boundingRight);
-			dict.SetValue(TJS_W("name"),   ttstr(u16_to_tjs(sr.groupName)));
+			dict.SetValue(TJS_W("name"),   u16ToTjs(sr.groupName));
 			if (arr.IsValid()) {
 				for (int i = 0; i < (int)sr.slices.size(); i++) {
 					ncbDictionaryAccessor tmp;
@@ -483,12 +460,12 @@ PSD::getSlices()
 						tmp.SetValue(TJS_W("horizontal_alignment"), item.horizontalAlign);
 						tmp.SetValue(TJS_W("vertical_alignment"),   item.verticalAlign);
 						tmp.SetValue(TJS_W("associated_layer_id"),	item.associatedLayerId);
-						tmp.SetValue(TJS_W("name"),      ttstr(u16_to_tjs(item.name)));
-						tmp.SetValue(TJS_W("url"),       ttstr(u16_to_tjs(item.url)));
-						tmp.SetValue(TJS_W("target"),    ttstr(u16_to_tjs(item.target)));
-						tmp.SetValue(TJS_W("message"),   ttstr(u16_to_tjs(item.message)));
-						tmp.SetValue(TJS_W("alt_tag"),   ttstr(u16_to_tjs(item.altTag)));
-						tmp.SetValue(TJS_W("cell_text"), ttstr(u16_to_tjs(item.cellText)));
+						tmp.SetValue(TJS_W("name"),      u16ToTjs(item.name));
+						tmp.SetValue(TJS_W("url"),       u16ToTjs(item.url));
+						tmp.SetValue(TJS_W("target"),    u16ToTjs(item.target));
+						tmp.SetValue(TJS_W("message"),   u16ToTjs(item.message));
+						tmp.SetValue(TJS_W("alt_tag"),   u16ToTjs(item.altTag));
+						tmp.SetValue(TJS_W("cell_text"), u16ToTjs(item.cellText));
 						arr.SetValue((tjs_int32)i, tmp.GetDispatch());
 					}
 				}
@@ -591,8 +568,8 @@ PSD::getLayerComp()
 						tmp.SetValue(TJS_W("record_visibility"), comp.isRecordVisibility);
 						tmp.SetValue(TJS_W("record_position"),   comp.isRecordPosition);
 						tmp.SetValue(TJS_W("record_appearance"), comp.isRecordAppearance);
-						tmp.SetValue(TJS_W("name"),             ttstr(u16_to_tjs(comp.name)));
-						tmp.SetValue(TJS_W("comment"),          ttstr(u16_to_tjs(comp.comment)));
+						tmp.SetValue(TJS_W("name"),             u16ToTjs(comp.name));
+						tmp.SetValue(TJS_W("comment"),          u16ToTjs(comp.comment));
 						arr.SetValue((tjs_int32)i,        tmp.GetDispatch());
 					}
 				}

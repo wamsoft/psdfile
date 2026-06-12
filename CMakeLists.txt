@@ -38,9 +38,7 @@ if(PSDFILE_BUILD_KIRIKIRI_PLUGIN)
         NCBIND
         SOURCES
             psdclass.cpp
-            psdclass_loadmem.cpp
             psdclass_loadstream.cpp
-            psdclass_loadstreambase.cpp
             stdafx.cpp
             main.cpp
         LIBRARIES

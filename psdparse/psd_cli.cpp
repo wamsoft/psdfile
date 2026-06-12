@@ -8,21 +8,49 @@
 #include "psdfile.h"
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <vector>
 
+#ifdef _WIN32
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
+  #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+  #endif
+  #include <windows.h>
+#endif
+
+#ifdef _WIN32
+// Win32: wmain で UTF-16 argv を受けて UTF-8 に変換してから psd::load に渡す。
+// 通常の main(argv) は ACP 解釈なので Japanese 等が落ちる。
+int wmain(int argc, wchar_t *wargv[]) {
+  if (argc < 2) {
+    std::fprintf(stderr, "usage: psdparse_cli <psd-file>\n");
+    return 2;
+  }
+  int n = WideCharToMultiByte(CP_UTF8, 0, wargv[1], -1, nullptr, 0, nullptr, nullptr);
+  if (n <= 0) { std::fprintf(stderr, "bad path encoding\n"); return 2; }
+  std::string path((size_t)n, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, wargv[1], -1, path.data(), n, nullptr, nullptr);
+  if (!path.empty() && path.back() == '\0') path.pop_back();
+  const char *filename = path.c_str();
+#else
 int main(int argc, const char *argv[]) {
   if (argc < 2) {
     std::fprintf(stderr, "usage: %s <psd-file>\n", argv[0]);
     return 2;
   }
+  const char *filename = argv[1];
+#endif
 
   psd::PSDFile psd;
-  if (!psd.load(argv[1])) {
-    std::fprintf(stderr, "load failed: %s\n", argv[1]);
+  if (!psd.load(filename)) {
+    std::fprintf(stderr, "load failed: %s\n", filename);
     return 1;
   }
 
-  std::printf("loaded: %s\n", argv[1]);
+  std::printf("loaded: %s\n", filename);
   std::printf("  version  : %d\n",  psd.header.version);
   std::printf("  size     : %d x %d\n", psd.header.width, psd.header.height);
   std::printf("  channels : %d\n",  psd.header.channels);
