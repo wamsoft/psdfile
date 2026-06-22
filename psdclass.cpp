@@ -780,6 +780,26 @@ public:
 };
 }
 
+#if !defined(_WIN32)
+typedef struct tagBITMAPFILEHEADER
+{
+	tjs_uint16	bfType;
+	tjs_uint32	bfSize;
+	tjs_uint16	bfReserved1;
+	tjs_uint16	bfReserved2;
+	tjs_uint32	bfOffBits;
+} BITMAPFILEHEADER, *PBITMAPFILEHEADER;
+#endif
+
+#ifndef BI_RGB
+	#define BI_RGB			0
+	#define BI_RLE8			1
+	#define BI_RLE4			2
+	#define BI_BITFIELDS	3
+#endif
+
+
+
 /*
  * 指定した名前のレイヤの画像ファイルをストリームで返す
  * @param name パスを含むレイヤ名
