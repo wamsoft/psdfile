@@ -15,7 +15,7 @@ psdfile/                         ← このリポジトリ
 ├── CMakeLists.txt               psdfile.dll の build 設定
 ├── CMakePresets.json            x64-windows (kirikiri Debug/Release)、x86-windows
 ├── Makefile                     make PRESET=x64-windows BUILD_TYPE=Debug build
-├── vcpkg.json                   zlib のみ (psdparse から継承)
+├── vcpkg.json                   zlib のみ (吉里吉里 build 用に vcpkg で供給)
 ├── manual.tjs                   ★ TJS2 API 正本
 ├── psdclass.h                   PSD クラスヘッダ
 ├── psdclass.cpp                 PSD クラス本体 (getLayerData / getBlend / ストレージ等)
@@ -54,7 +54,13 @@ make PRESET=x64-windows BUILD_TYPE=Release build
 - `build/x64-windows/Debug/psdfile.dll`
 - `build/x64-windows/external/psdparse/psdparse/Debug/psdparse_cli.exe` (psdparse 側 CLI、smoke test 用)
 
-依存: vcpkg で zlib のみ。Boost は完全に削除済み。
+依存: zlib のみ。Boost は完全に削除済み。
+
+zlib の供給: psdparse 側の `psdparse/CMakeLists.txt` は `find_package(ZLIB QUIET)` →
+見つからなければ `FetchContent` で zlib 1.3.1 をソース取得するフォールバックを持つ
+(psdparse 単体では vcpkg 不要になった)。psdfile の吉里吉里 build では `vcpkg.json` の
+`zlib` を vcpkg static triplet で供給しており、`find_package` がそれを拾うので FetchContent は
+発動しない。VCPKG_ROOT 未設定などで vcpkg zlib が無い場合のみソース fetch にフォールバックする。
 
 **重要なハマりポイント:**
 - clang LSP は tp_stub.h / ncbind.hpp / submodule 先のヘッダを解決できず大量の偽 error を出す。CMake/MSVC ビルドは通るので無視する。
@@ -81,7 +87,18 @@ psdclass_loadstream.cpp 無名 ns
 
 `u16str → ttstr` 変換は `psdclass.cpp` の `u16ToTjs(const psd::u16str&)` (length 指定の `ttstr(const tjs_char*, tjs_int)` で構成)。`tjs_char == char16_t` 前提なので Windows 専用前提だが psdfile.dll は Windows ターゲットのみなので問題なし。
 
-psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / StreamReader / WriterBase / round-trip save の仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) を参照。
+### テキストレイヤ ('TySh')
+
+psdparse v0.2.0 で追加された `LayerInfo::textData` (`psd::TextLayerData`) を
+`getLayerInfo()` が辞書キー `text` として転送する (テキストレイヤ = `layer_type_text`(=5)
+のときのみ。それ以外はキー自体を設定しない)。中身は `text` / `orientation` /
+`justification` / `transform[6]` / `runs[]`(ラン単位の font・size_px・color[RGBA]・
+tracking・kerning・auto_kerning)。psdparse 側で 'TySh' の追加レイヤ情報 → Adobe
+*EngineData* ミニ言語を `psdengine.cpp` が解析して埋める。`layer_type_text` 定数も
+`NCB_REGISTER_CLASS(PSD)` / `manual.tjs` に追加済み。未対応 (psdparse 側 ROADMAP):
+非RGB FillColor・warp text・段落テキスト境界・leading/下線等。
+
+psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / StreamReader / WriterBase / round-trip save / EngineData パースの仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) と [docs/PYTHON_API.md](external/psdparse/docs/PYTHON_API.md) の `layer.text` 節を参照。
 
 ## 行儀よく避ける改変
 

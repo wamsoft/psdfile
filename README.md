@@ -41,7 +41,10 @@ cmake --build --preset x64-windows --config Release
 
 成果物: `build/x64-windows/Release/psdfile.dll`
 
-依存パッケージは vcpkg manifest (`vcpkg.json`) で `zlib` のみ。
+依存パッケージは `zlib` のみ。吉里吉里 build では vcpkg manifest (`vcpkg.json`) の
+static triplet で供給する。なお psdparse 側は zlib が見つからなければ CMake の
+`FetchContent` でソース取得するフォールバックを持つため、psdparse 単体では vcpkg を必要としない
+(psdfile 側は上記どおり vcpkg 経由で供給し、その zlib が使われる)。
 
 ## 使い方
 
@@ -59,6 +62,15 @@ psd.width, psd.height, psd.channels, psd.color_mode, psd.layer_count;
 // レイヤ情報
 var info = psd.getLayerInfo(0);
 // info.name, info.top/left/bottom/right, info.blend_mode, info.visible, ...
+
+// テキストレイヤ (info.layer_type == PSD.layer_type_text) は info.text を持つ
+if (info.text !== void) {
+    info.text.text;           // 本文 (改行は \r)
+    info.text.orientation;    // "horizontal" / "vertical"
+    info.text.justification;  // 0=左 1=右 2=中央
+    info.text.transform;      // [ xx, xy, yx, yy, tx, ty ]
+    // info.text.runs[i] = %[ length, font, size_px, color:[r,g,b,a], tracking, kerning, auto_kerning ]
+}
 
 // レイヤ画像をレイヤオブジェクトに展開
 var lay = new Layer(window, null);
@@ -103,6 +115,10 @@ lay.loadImages("psd://foo.psd/root/face/eye.bmp");
 | DuoTone | × 未対応 |
 
 レイヤマスクは画像読み込み時にアルファチャネルへ繰り込まれる。クリッピングマスクは未対応。
+
+テキストレイヤは本文・向き (縦/横)・行揃え・配置変換・ラン単位のフォント/サイズ/色/字送りを
+`getLayerInfo().text` から取得できる (psdparse の 'TySh' + EngineData 解析)。非RGB 塗り色・
+ワープテキスト・段落テキスト境界・下線等は未対応 (psdparse 側 ROADMAP 参照)。
 
 ## アーキテクチャ
 

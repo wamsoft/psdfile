@@ -300,6 +300,53 @@ PSD::getLayerInfo(int no)
 		if (lay.parent != NULL)
 			dict.SetValue(TJS_W("group_layer_id"), lay.parent->layerId);
 
+		// テキストレイヤ情報 ('TySh' 由来)。layer_type==TEXT のとき present。
+		// 非テキストレイヤでは "text" キー自体を設定しない (void 扱い)。
+		if (lay.textData.present) {
+			const psd::TextLayerData &td = lay.textData;
+			ncbDictionaryAccessor tdict;
+			if (tdict.IsValid()) {
+				tdict.SetValue(TJS_W("text"),          u16ToTjs(td.text));
+				tdict.SetValue(TJS_W("orientation"),   ttstr(td.orientation.c_str()));
+				tdict.SetValue(TJS_W("justification"), td.justification);
+				// アフィン変換 [xx, xy, yx, yy, tx, ty]
+				ncbArrayAccessor tmat;
+				if (tmat.IsValid()) {
+					for (int i = 0; i < 6; i++)
+						tmat.SetValue((tjs_int32)i, td.transform[i]);
+					tdict.SetValue(TJS_W("transform"), tmat.GetDispatch());
+				}
+				// ラン単位スタイル
+				ncbArrayAccessor truns;
+				if (truns.IsValid()) {
+					for (int i = 0; i < (int)td.runs.size(); i++) {
+						const psd::TextStyleRun &run = td.runs[i];
+						ncbDictionaryAccessor rdict;
+						if (rdict.IsValid()) {
+							rdict.SetValue(TJS_W("length"),       run.length);
+							rdict.SetValue(TJS_W("font"),         u16ToTjs(run.font));
+							rdict.SetValue(TJS_W("size_px"),      run.fontSize);
+							// FillColor 未指定なら color は設定しない (void)
+							if (run.hasColor) {
+								ncbArrayAccessor rcol;
+								if (rcol.IsValid()) {
+									for (int c = 0; c < 4; c++)
+										rcol.SetValue((tjs_int32)c, run.color[c]);
+									rdict.SetValue(TJS_W("color"), rcol.GetDispatch());
+								}
+							}
+							rdict.SetValue(TJS_W("tracking"),     run.tracking);
+							rdict.SetValue(TJS_W("kerning"),      run.kerning);
+							rdict.SetValue(TJS_W("auto_kerning"), run.autoKerning);
+							truns.SetValue((tjs_int32)i, rdict.GetDispatch());
+						}
+					}
+					tdict.SetValue(TJS_W("runs"), truns.GetDispatch());
+				}
+				dict.SetValue(TJS_W("text"), tdict.GetDispatch());
+			}
+		}
+
 		result = dict;
 	}
 
@@ -943,6 +990,7 @@ NCB_REGISTER_CLASS(PSD) {
   Variant("layer_type_folder",              (int)psd::LAYER_TYPE_FOLDER);
   Variant("layer_type_adjust",              (int)psd::LAYER_TYPE_ADJUST);
   Variant("layer_type_fill",                (int)psd::LAYER_TYPE_FILL);
+  Variant("layer_type_text",                (int)psd::LAYER_TYPE_TEXT);
 
 	NCB_METHOD(load);
 
