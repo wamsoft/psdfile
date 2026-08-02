@@ -58,6 +58,7 @@ psd.load("foo.psd");
 
 // 基本プロパティ
 psd.width, psd.height, psd.channels, psd.color_mode, psd.layer_count;
+psd.hresolution, psd.vresolution;   // 解像度 (dpi, 既定 72)
 
 // レイヤ情報
 var info = psd.getLayerInfo(0);
@@ -101,6 +102,53 @@ var lay = new Layer(win, null);
 lay.loadImages("psd://foo.psd/root/face/eye.bmp");
 ```
 
+### 編集・書き出し API
+
+psdparse v0.7+ の編集機能を吉里吉里バインドに公開している。いずれも in-memory の
+内容を編集し、`save()` で PSD ファイルとして書き出す。画素/レイヤ追加系は **8bit RGB
+文書のみ**対応。編集後の合成画像 (`getBlend` の元) は古いままになる (Photoshop で開いて
+再合成するまで反映されない)。
+
+```javascript
+var psd = new PSD();
+psd.load("foo.psd");
+
+// レイヤ構造の編集
+psd.deleteLayer(3);
+psd.moveLayer(0, 2);
+var dup = psd.duplicateLayer(1);
+psd.setLayerName(0, "背景");
+psd.setFillOpacity(1, 128);
+
+// 画素の差し替え / レイヤ追加 (Layer オブジェクトの BGRA を取り込む)
+psd.setLayerPixels(2, srcLayer);
+var idx = psd.addLayer("新規", 10, 20, srcLayer, PSD.blend_mode_multiply, 255);
+psd.setMergedImage(mergedLayer);      // プレビュー(合成画像)の差し替え
+
+// マスク
+psd.setLayerMaskPixels(2, maskLayer, 0, 0);
+psd.setMaskDensity(2, 200);
+psd.setMaskFeather(2, 1.5);
+
+// テキストレイヤの編集
+psd.setLayerText(4, "差し替えたテキスト");
+psd.setLayerRunStyle(4, 0, %[ size_px:48, bold:true, color:[1,0,0,1] ]);
+
+// 別 PSD からレイヤをコピー (カラーモード/深度が一致していること)
+var other = new PSD(); other.load("bar.psd");
+psd.copyLayerFrom(other, 0, -1);
+
+psd.save("out.psd");
+
+// 完全新規作成
+var np = new PSD();
+np.createBlank(640, 480);
+np.addLayer("layer1", 0, 0, someLayer);
+np.save("new.psd");
+```
+
+詳細な引数は [`manual.tjs`](manual.tjs) の「編集系 API」節を参照。
+
 ## サポートする PSD 形式
 
 | 形式 | 状態 |
@@ -116,9 +164,14 @@ lay.loadImages("psd://foo.psd/root/face/eye.bmp");
 
 レイヤマスクは画像読み込み時にアルファチャネルへ繰り込まれる。クリッピングマスクは未対応。
 
-テキストレイヤは本文・向き (縦/横)・行揃え・配置変換・ラン単位のフォント/サイズ/色/字送りを
-`getLayerInfo().text` から取得できる (psdparse の 'TySh' + EngineData 解析)。非RGB 塗り色・
-ワープテキスト・段落テキスト境界・下線等は未対応 (psdparse 側 ROADMAP 参照)。
+テキストレイヤは本文・向き (縦/横)・行揃え・配置変換・段落別行揃え (`paragraphs`)・
+ラン単位のフォント/サイズ/色/字送りを `getLayerInfo().text` から取得できる
+(psdparse の 'TySh' + EngineData 解析)。本文・ラン単位スタイルの編集も
+`setLayerText()` / `setLayerRunStyle()` で可能。非RGB 塗り色・ワープテキスト・
+段落テキスト境界等は未対応 (psdparse 側 ROADMAP 参照)。
+
+レイヤ構造・画素・マスク・テキストの編集と PSD 書き出し (`save`) にも対応する
+(「編集・書き出し API」節参照。画素/レイヤ追加系は 8bit RGB 文書のみ)。
 
 ## アーキテクチャ
 

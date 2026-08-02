@@ -1,5 +1,9 @@
 #include <ncbind.hpp>
 #include "psdclass.h"
+#include "psddesc.h"    // 編集系: Descriptor / DescriptorString / DescriptorRawData
+#include "psdengine.h"  // 編集系: editEngineDataText / editEngineDataRunStyle
+#include "psdwrite.h"   // 編集系: MemoryWriter / writeDescriptorBody
+#include <vector>
 
 #define BMPEXT TJS_W(".bmp")
 
@@ -11,6 +15,104 @@ static inline ttstr u16ToTjs(const psd::u16str &s) {
 	              "tjs_char must be 16-bit UTF-16 code unit");
 	return ttstr(reinterpret_cast<const tjs_char *>(s.data()),
 	             (tjs_int)s.length());
+}
+
+// ttstr (UTF-16 host-order) を psd::u16str に変換。tjs_char == char16_t 前提。
+static inline psd::u16str tjsToU16(const ttstr &s) {
+	return psd::u16str(reinterpret_cast<const char16_t *>(s.c_str()),
+	                   (size_t)s.length());
+}
+
+// ttstr (UTF-16) を UTF-8 (std::string) に変換。psdparse の setLayerName /
+// addLayer は UTF-8 名を受け取り内部で luni に再変換するため。
+static std::string tjsToUtf8(const ttstr &s) {
+	std::string out;
+	const tjs_char *p = s.c_str();
+	tjs_int n = s.length();
+	for (tjs_int i = 0; i < n; i++) {
+		uint32_t cp = (uint16_t)p[i];
+		if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < n) {
+			uint32_t lo = (uint16_t)p[i + 1];
+			if (lo >= 0xdc00 && lo <= 0xdfff) {
+				cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
+				i++;
+			}
+		}
+		if (cp < 0x80) {
+			out.push_back((char)cp);
+		} else if (cp < 0x800) {
+			out.push_back((char)(0xc0 | (cp >> 6)));
+			out.push_back((char)(0x80 | (cp & 0x3f)));
+		} else if (cp < 0x10000) {
+			out.push_back((char)(0xe0 | (cp >> 12)));
+			out.push_back((char)(0x80 | ((cp >> 6) & 0x3f)));
+			out.push_back((char)(0x80 | (cp & 0x3f)));
+		} else {
+			out.push_back((char)(0xf0 | (cp >> 18)));
+			out.push_back((char)(0x80 | ((cp >> 12) & 0x3f)));
+			out.push_back((char)(0x80 | ((cp >> 6) & 0x3f)));
+			out.push_back((char)(0x80 | (cp & 0x3f)));
+		}
+	}
+	return out;
+}
+
+// psd::BlendMode enum を PSD の 4CC blendModeKey へ変換 (addLayer 用)。
+// blendKeyToMode の逆写像。未知は 'norm'。
+static int blendModeToKey(int mode) {
+	switch ((psd::BlendMode)mode) {
+	case psd::BLEND_MODE_NORMAL:        return 'norm';
+	case psd::BLEND_MODE_DISSOLVE:      return 'diss';
+	case psd::BLEND_MODE_DARKEN:        return 'dark';
+	case psd::BLEND_MODE_MULTIPLY:      return 'mul ';
+	case psd::BLEND_MODE_COLOR_BURN:    return 'idiv';
+	case psd::BLEND_MODE_LINEAR_BURN:   return 'lbrn';
+	case psd::BLEND_MODE_DARKER_COLOR:  return 'dkCl';
+	case psd::BLEND_MODE_LIGHTEN:       return 'lite';
+	case psd::BLEND_MODE_SCREEN:        return 'scrn';
+	case psd::BLEND_MODE_COLOR_DODGE:   return 'div ';
+	case psd::BLEND_MODE_LINEAR_DODGE:  return 'lddg';
+	case psd::BLEND_MODE_LIGHTER_COLOR: return 'ltCl';
+	case psd::BLEND_MODE_OVERLAY:       return 'over';
+	case psd::BLEND_MODE_SOFT_LIGHT:    return 'sLit';
+	case psd::BLEND_MODE_HARD_LIGHT:    return 'hLit';
+	case psd::BLEND_MODE_VIVID_LIGHT:   return 'vLit';
+	case psd::BLEND_MODE_LINEAR_LIGHT:  return 'lLit';
+	case psd::BLEND_MODE_PIN_LIGHT:     return 'pLit';
+	case psd::BLEND_MODE_HARD_MIX:      return 'hMix';
+	case psd::BLEND_MODE_DIFFERENCE:    return 'diff';
+	case psd::BLEND_MODE_EXCLUSION:     return 'smud';
+	case psd::BLEND_MODE_SUBTRACT:      return 'fsub';
+	case psd::BLEND_MODE_DIVIDE:        return 'fdiv';
+	case psd::BLEND_MODE_HUE:           return 'hue ';
+	case psd::BLEND_MODE_SATURATION:    return 'sat ';
+	case psd::BLEND_MODE_COLOR:         return 'colr';
+	case psd::BLEND_MODE_LUMINOSITY:    return 'lum ';
+	case psd::BLEND_MODE_PASS_THROUGH:  return 'pass';
+	default:                            return 'norm';
+	}
+}
+
+// 吉里吉里 Layer から BGRA を tight-pack (imageWidth*imageHeight*4) で取り出す。
+// 戻り値は呼び出し側で delete[]。取得失敗で 0。
+static uint8_t *readLayerBGRA(tTJSVariant &layer, int &width, int &height) {
+	if (!layer.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, TJS_W("Layer"), NULL)) {
+		TVPThrowExceptionMessage(TJS_W("not layer"));
+	}
+	ncbPropAccessor obj(layer);
+	width  = (int)obj.GetValue(TJS_W("imageWidth"),  ncbTypedefs::Tag<tjs_int>());
+	height = (int)obj.GetValue(TJS_W("imageHeight"), ncbTypedefs::Tag<tjs_int>());
+	if (width <= 0 || height <= 0) return 0;
+	const uint8_t *src = (const uint8_t *)(tjs_intptr_t)
+		obj.GetValue(TJS_W("mainImageBuffer"), ncbTypedefs::Tag<tjs_intptr_t>());
+	tjs_int pitch = (tjs_int)obj.GetValue(TJS_W("mainImageBufferPitch"),
+	                                      ncbTypedefs::Tag<tjs_int>());
+	if (!src) return 0;
+	uint8_t *buf = new uint8_t[(size_t)width * height * 4];
+	for (int y = 0; y < height; y++)
+		memcpy(buf + (size_t)y * width * 4,
+		       src + (tjs_intptr_t)y * pitch, (size_t)width * 4);
+	return buf;
 }
 
 // ncb.typeconv: cast: enum->int
@@ -244,6 +346,25 @@ PSD::getLayerInfo(int no)
 			}
 		}
 		dict.SetValue(TJS_W("mask"), mask);
+		// マスクパラメータ (density/feather)。 マスクを持ちパラメータブロックが
+		// 実在するときのみ mask_params 辞書を設定する。
+		{
+			psd::LayerMask &lm = lay.extraData.layerMask;
+			if (lm.present && lm.hasParameters) {
+				ncbDictionaryAccessor mp;
+				if (mp.IsValid()) {
+					if (lm.userMaskDensity >= 0)
+						mp.SetValue(TJS_W("user_density"), lm.userMaskDensity);
+					if (lm.hasUserFeather)
+						mp.SetValue(TJS_W("user_feather"), lm.userMaskFeather);
+					if (lm.vectorMaskDensity >= 0)
+						mp.SetValue(TJS_W("vector_density"), lm.vectorMaskDensity);
+					if (lm.hasVectorFeather)
+						mp.SetValue(TJS_W("vector_feather"), lm.vectorMaskFeather);
+					dict.SetValue(TJS_W("mask_params"), mp.GetDispatch());
+				}
+			}
+		}
 		dict.SetValue(TJS_W("type"),       convBlendMode(lay.blendMode));
 		dict.SetValue(TJS_W("layer_type"), lay.layerType);
 		dict.SetValue(TJS_W("blend_mode"), lay.blendMode);
@@ -342,6 +463,22 @@ PSD::getLayerInfo(int no)
 						}
 					}
 					tdict.SetValue(TJS_W("runs"), truns.GetDispatch());
+				}
+				// 段落別行揃え (box text で段落ごとに揃えが変わるケース用)。
+				if (!td.paragraphs.empty()) {
+					ncbArrayAccessor tpars;
+					if (tpars.IsValid()) {
+						for (int i = 0; i < (int)td.paragraphs.size(); i++) {
+							const psd::TextParagraph &par = td.paragraphs[i];
+							ncbDictionaryAccessor pdict;
+							if (pdict.IsValid()) {
+								pdict.SetValue(TJS_W("length"),        par.length);
+								pdict.SetValue(TJS_W("justification"), par.justification);
+								tpars.SetValue((tjs_int32)i, pdict.GetDispatch());
+							}
+						}
+						tdict.SetValue(TJS_W("paragraphs"), tpars.GetDispatch());
+					}
 				}
 				dict.SetValue(TJS_W("text"), tdict.GetDispatch());
 			}
@@ -939,6 +1076,272 @@ static tjs_error AssignAutoIds(tTJSVariant *r, tjs_int numparams, tTJSVariant **
 	return TJS_S_OK;
 }
 
+// addLayer(name, left, top, layer, blendMode=blend_mode_normal, opacity=255,
+//          destIndex=-1)。末尾 3 引数を optional にするため RawCallback で公開。
+static tjs_error AddLayer(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 4) return TJS_E_BADPARAMCOUNT;
+	ttstr name       = *params[0];
+	int   left       = (tjs_int)*params[1];
+	int   top        = (tjs_int)*params[2];
+	tTJSVariant layer = *params[3];
+	int   blendMode  = numparams > 4 ? (tjs_int)*params[4] : (int)psd::BLEND_MODE_NORMAL;
+	int   opacity    = numparams > 5 ? (tjs_int)*params[5] : 255;
+	int   destIndex  = numparams > 6 ? (tjs_int)*params[6] : -1;
+	int idx = instance->addLayer(name, left, top, layer, blendMode, opacity, destIndex);
+	if (r) *r = (tjs_int)idx;
+	return TJS_S_OK;
+}
+
+// ============================================================================
+// 編集系 API 実装
+// ============================================================================
+
+// レイヤ構造を変える編集の後で psd:// ストレージのレイヤ検索キャッシュを破棄する。
+// (indices/名前が変わるため。 次回アクセス時に startStorage() で再構築される)
+void
+PSD::invalidateStorageCache()
+{
+	layerIdIdxMap.clear();
+	pathMap.clear();
+	storageStarted = false;
+}
+
+bool
+PSD::save(ttstr filename)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	// ローカルパスへ変換 (file:// 等の storage 名にも対応)。fopen ベースなので
+	// OS ロケールの narrow 名で渡す。TVPGetLocalName は in-place で書き換える。
+	ttstr local = filename;
+	TVPGetLocalName(local);
+	NarrowString path(local);
+	return psd::PSDFile::save((const char *)path);
+}
+
+bool
+PSD::createBlank(int width, int height)
+{
+	removeFromStorage();
+	invalidateStorageCache();
+	return psd::PSDFile::createBlank(width, height);
+}
+
+bool
+PSD::deleteLayer(int index)
+{
+	bool r = psd::PSDFile::deleteLayer(index);
+	if (r) invalidateStorageCache();
+	return r;
+}
+
+bool
+PSD::moveLayer(int from, int to)
+{
+	bool r = psd::PSDFile::moveLayer(from, to);
+	if (r) invalidateStorageCache();
+	return r;
+}
+
+int
+PSD::duplicateLayer(int index)
+{
+	int r = psd::PSDFile::duplicateLayer(index);
+	if (r >= 0) invalidateStorageCache();
+	return r;
+}
+
+int
+PSD::copyLayerFrom(tTJSVariant src, int srcIndex, int destIndex)
+{
+	iTJSDispatch2 *obj = src.AsObjectNoAddRef();
+	PSD *psrc = ncbInstanceAdaptor<PSD>::GetNativeInstance(obj);
+	if (!psrc) TVPThrowExceptionMessage(TJS_W("not a PSD instance"));
+	int r = psd::PSDFile::copyLayerFrom(*psrc, srcIndex, destIndex);
+	if (r >= 0) invalidateStorageCache();
+	return r;
+}
+
+bool
+PSD::setLayerName(int index, ttstr name)
+{
+	std::string u8 = tjsToUtf8(name);
+	bool r = psd::PSDFile::setLayerName(index, u8.c_str());
+	if (r) invalidateStorageCache();  // path 名が変わる
+	return r;
+}
+
+bool PSD::setFillOpacity(int index, int opacity)   { return psd::PSDFile::setFillOpacity(index, opacity); }
+bool PSD::setMaskDisabled(int index, bool disabled){ return psd::PSDFile::setMaskDisabled(index, disabled); }
+bool PSD::setMaskDensity(int index, int density)   { return psd::PSDFile::setMaskDensity(index, density); }
+bool PSD::setMaskFeather(int index, double feather){ return psd::PSDFile::setMaskFeather(index, feather); }
+bool PSD::setMaskDefaultColor(int index, int color){ return psd::PSDFile::setMaskDefaultColor(index, color); }
+
+bool
+PSD::setLayerPixels(int index, tTJSVariant layer)
+{
+	int w, h;
+	uint8_t *bgra = readLayerBGRA(layer, w, h);
+	if (!bgra) return false;
+	bool r = psd::PSDFile::setLayerPixels(index, bgra, w, h);
+	delete[] bgra;
+	if (r) invalidateStorageCache();
+	return r;
+}
+
+bool
+PSD::setLayerMaskPixels(int index, tTJSVariant layer, int top, int left)
+{
+	int w, h;
+	uint8_t *bgra = readLayerBGRA(layer, w, h);
+	if (!bgra) return false;
+	// BGRA から B 成分 (getLayerDataMask が b=g=r=mask で返すのと対応) を抜いて
+	// グレースケール化。
+	std::vector<uint8_t> gray((size_t)w * h);
+	for (size_t i = 0; i < gray.size(); i++) gray[i] = bgra[i * 4];
+	delete[] bgra;
+	return psd::PSDFile::setLayerMaskPixels(index, gray.data(), top, left, w, h);
+}
+
+int
+PSD::addLayer(ttstr name, int left, int top, tTJSVariant layer,
+              int blendMode, int opacity, int destIndex)
+{
+	int w, h;
+	uint8_t *bgra = readLayerBGRA(layer, w, h);
+	if (!bgra) return -1;
+	std::string u8 = tjsToUtf8(name);
+	int r = psd::PSDFile::addLayer(u8.c_str(), left, top, bgra, w, h,
+	                               blendModeToKey(blendMode), opacity, destIndex);
+	delete[] bgra;
+	if (r >= 0) invalidateStorageCache();
+	return r;
+}
+
+bool
+PSD::setMergedImage(tTJSVariant layer)
+{
+	int w, h;
+	uint8_t *bgra = readLayerBGRA(layer, w, h);
+	if (!bgra) return false;
+	bool r = psd::PSDFile::setMergedImage(bgra, w, h);
+	delete[] bgra;
+	return r;
+}
+
+// --- テキストレイヤ編集 -----------------------------------------------------
+// psdparse の Python glue (editTextLayer) を吉里吉里バインドに移植したもの。
+// TySh ブロック (version/transform prefix + descriptor + warp/bounds suffix) を
+// パースし、埋め込みの EngineData を editEngine で変換、必要なら 'Txt ' 文字列も
+// 差し替えて TySh を再直列化し、レイヤ extra data に戻す。psdparse の公開 C++
+// API のみ使用 (submodule には手を入れない)。
+template <class EditFn>
+static bool editTextLayerImpl(psd::PSDFile &self, int index, EditFn editEngine,
+                              const psd::u16str *newTxt, ttstr &err)
+{
+	if (index < 0 || index >= (int)self.layerList.size()) {
+		err = TJS_W("layer index out of range");
+		return false;
+	}
+	psd::LayerInfo &lay = self.layerList[(size_t)index];
+	for (std::vector<psd::AdditionalLayerInfo>::iterator it = lay.extraData.additionalLayers.begin();
+	     it != lay.extraData.additionalLayers.end(); ++it) {
+		if (it->key != 'TySh' || !it->data) continue;
+		psd::IteratorBase *rd = it->data->clone();
+		rd->init();
+		// prefix: version(2) + transform(6*8) + textVer(2) + descVer(4) = 56
+		uint8_t prefix[56];
+		if (rd->getData(prefix, 56) != 56) { delete rd; err = TJS_W("TySh block too short"); return false; }
+		psd::Descriptor td;
+		td.load(rd);
+		int restLen = rd->rest();
+		std::vector<uint8_t> suffix((size_t)(restLen > 0 ? restLen : 0));
+		if (restLen > 0) rd->getData(suffix.data(), restLen);  // warp + bounds
+		delete rd;
+
+		psd::DescriptorRawData *eng =
+			dynamic_cast<psd::DescriptorRawData *>(td.findItem("EngineData"));
+		if (!eng) { err = TJS_W("text layer has no EngineData"); return false; }
+		std::string newEngine;
+		if (!editEngine(eng->bytes, newEngine)) { err = TJS_W("failed to edit EngineData"); return false; }
+		eng->bytes = newEngine;
+		if (newTxt) {
+			psd::DescriptorString *txt =
+				dynamic_cast<psd::DescriptorString *>(td.findItem("Txt "));
+			if (txt) txt->val = *newTxt;
+		}
+
+		std::vector<uint8_t> buf;
+		psd::MemoryWriter w(buf);
+		w.putData(prefix, sizeof(prefix));
+		psd::writeDescriptorBody(w, &td);
+		if (!suffix.empty()) w.putData(suffix.data(), suffix.size());
+		self.setAdditionalInfoBytes(index, 'TySh', buf.data(), (int)buf.size());
+		return true;
+	}
+	err = TJS_W("layer is not a text layer (no TySh block)");
+	return false;
+}
+
+void
+PSD::setLayerText(int index, ttstr text)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	psd::u16str newText = tjsToU16(text);
+	ttstr err;
+	bool ok = editTextLayerImpl(*this, index,
+		[&](const std::string &in, std::string &out) {
+			return psd::editEngineDataText(in.data(), in.size(), newText, out);
+		}, &newText, err);
+	if (!ok) TVPThrowExceptionMessage(err.c_str());
+}
+
+void
+PSD::setLayerRunStyle(int index, int runIndex, tTJSVariant style)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	psd::RunStyleEdit edit;
+	ncbPropAccessor s(style);
+	// 指定されたキーだけ has* を立てて上書きする。
+	if (s.HasValue(TJS_W("size_px"))) {
+		edit.hasSize = true;
+		edit.size = (double)s.getRealValue(TJS_W("size_px"));
+	}
+	if (s.HasValue(TJS_W("tracking"))) {
+		edit.hasTracking = true;
+		edit.tracking = (int)s.getIntValue(TJS_W("tracking"));
+	}
+	if (s.HasValue(TJS_W("kerning"))) {
+		edit.hasKerning = true;
+		edit.kerning = (int)s.getIntValue(TJS_W("kerning"));
+	}
+	if (s.HasValue(TJS_W("bold"))) {
+		edit.hasBold = true;
+		edit.bold = s.getIntValue(TJS_W("bold")) != 0;
+	}
+	if (s.HasValue(TJS_W("italic"))) {
+		edit.hasItalic = true;
+		edit.italic = s.getIntValue(TJS_W("italic")) != 0;
+	}
+	if (s.HasValue(TJS_W("underline"))) {
+		edit.hasUnderline = true;
+		edit.underline = s.getIntValue(TJS_W("underline")) != 0;
+	}
+	if (s.HasValue(TJS_W("color"))) {
+		tTJSVariant cv = s.GetValue(TJS_W("color"), ncbTypedefs::Tag<tTJSVariant>());
+		ncbPropAccessor col(cv);
+		edit.hasColor = true;
+		for (int c = 0; c < 4; c++)
+			edit.color[c] = (float)col.getRealValue((tjs_int)c);
+	}
+	ttstr err;
+	bool ok = editTextLayerImpl(*this, index,
+		[&](const std::string &in, std::string &out) {
+			return psd::editEngineDataRunStyle(in.data(), in.size(), runIndex, edit, out);
+		}, (const psd::u16str *)0, err);
+	if (!ok) TVPThrowExceptionMessage(err.c_str());
+}
+
 NCB_REGISTER_CLASS(PSD) {
 
 	Factory(&ClassT::factory);
@@ -1003,6 +1406,9 @@ NCB_REGISTER_CLASS(PSD) {
 	INTPROP(color_mode);
 	INTPROP(layer_count);
 
+	Property(TJS_W("hresolution"), &Class::get_hresolution, (int)0);
+	Property(TJS_W("vresolution"), &Class::get_vresolution, (int)0);
+
 	NCB_METHOD(getLayerType);
 	NCB_METHOD(getLayerName);
 	NCB_METHOD(getLayerInfo);
@@ -1018,5 +1424,25 @@ NCB_REGISTER_CLASS(PSD) {
   NCB_METHOD(clearStorageCache);
 
 	RawCallback("assignAutoIds", &AssignAutoIds, 0);
+
+	// --- 編集系 API ---
+	NCB_METHOD(save);
+	NCB_METHOD(createBlank);
+	NCB_METHOD(deleteLayer);
+	NCB_METHOD(moveLayer);
+	NCB_METHOD(duplicateLayer);
+	NCB_METHOD(copyLayerFrom);
+	NCB_METHOD(setLayerName);
+	NCB_METHOD(setFillOpacity);
+	NCB_METHOD(setMaskDisabled);
+	NCB_METHOD(setMaskDensity);
+	NCB_METHOD(setMaskFeather);
+	NCB_METHOD(setMaskDefaultColor);
+	NCB_METHOD(setLayerPixels);
+	NCB_METHOD(setLayerMaskPixels);
+	RawCallback("addLayer", &AddLayer, 0);
+	NCB_METHOD(setMergedImage);
+	NCB_METHOD(setLayerText);
+	NCB_METHOD(setLayerRunStyle);
 };
 

@@ -86,6 +86,8 @@ class PSD {
 	property channels { getter; } //< チャンネル数
 	property color_mode { getter; } //< カラーモード
 	property layer_count { getter; } //< レイヤ数
+	property hresolution { getter; } //< 水平解像度(dpi, 既定72, image resource 1005)
+	property vresolution { getter; } //< 垂直解像度(dpi, 既定72)
 
 	/**
 	 * レイヤ種別の取得
@@ -123,6 +125,13 @@ class PSD {
 	 * type         合成モード（吉里吉里の対応モード)
 	 * clipping	クリッピングマスクの対象か？
 	 * mask		レイヤマスクを持っているかどうか？
+	 * mask_params  マスクパラメータ(density/feather)。マスクを持ちパラメータ
+	 *              ブロックが実在するレイヤのみ存在。指定された項目だけ持つ
+	 *   %[ user_density:   // ユーザーマスク濃度 0..255
+	 *      user_feather:   // ユーザーマスクぼかし(px)
+	 *      vector_density: // ベクタマスク濃度 0..255
+	 *      vector_feather: // ベクタマスクぼかし(px)
+	 *    ]
 	 * layer_comp    レイヤーカンプ情報(カンプIDをキーとした辞書)
 	 *   %[ <id>: [ id,       // カンプID(getLayerComp() を参照してください)
 	 *              offset_x, // レイヤのXオフセット
@@ -143,6 +152,10 @@ class PSD {
 	 *           tracking:     // トラッキング(字送り, 1/1000 em)
 	 *           kerning:      // 手動カーニング
 	 *           auto_kerning: // 自動カーニング(メトリクス/オプティカル)有効か
+	 *         ],... ]
+	 *      paragraphs: [   // 段落別の行揃え(box text で段落ごとに揃えが変わる用)
+	 *        %[ length:        // 段落の文字数(UTF-16 コードユニット)
+	 *           justification: // 行揃え 0=左 1=右 2=中央
 	 *         ],... ]
 	 *    ]
 	 * 以下 additional information （※詳細はPSD仕様書を参照のこと）
@@ -269,6 +282,184 @@ class PSD {
 	 *     プロパティにカンプIDをキーとした辞書に格納してあります。
 	 */
 	function getLayerComp();
+
+	// ========================================================================
+	// 編集系 API (psdparse v0.7+ の編集機能。psdfile.dll から利用可能)
+	//
+	// いずれも in-memory の内容を操作するだけで、実際のバイト列は save() 時に
+	// 再構築される。画素/レイヤ追加系は 8bit RGB 文書のみ対応。編集後は psd://
+	// ストレージのレイヤ検索キャッシュが破棄される。
+	// 注意: 合成画像(getBlend の元)は編集しても古いままになる
+	//       (Photoshop で開いて再合成するまで反映されない)。
+	// ========================================================================
+
+	/**
+	 * 現在の内容を PSD ファイルとして書き出す
+	 * @param filename 保存先ファイル名(ローカルパス)
+	 * @return 成功したら true
+	 */
+	function save(filename);
+
+	/**
+	 * この PSD を空の 8bit RGB 文書(白の合成画像)として初期化する。
+	 * 以後 addLayer(...) でレイヤを足して save() できる。
+	 * @param width  幅
+	 * @param height 高さ
+	 * @return 成功したら true
+	 */
+	function createBlank(width, height);
+
+	/**
+	 * レイヤを 1 枚削除する
+	 * @param index レイヤ番号
+	 * @return 成功したら true(範囲外で false)
+	 */
+	function deleteLayer(index);
+
+	/**
+	 * レイヤを from から to へ移動する
+	 * @param from 移動元レイヤ番号
+	 * @param to   移動先(削除後リストでの挿入位置)
+	 * @return 成功したら true
+	 */
+	function moveLayer(from, to);
+
+	/**
+	 * レイヤを複製する(元の直後に挿入)
+	 * @param index レイヤ番号
+	 * @return 複製の新レイヤ番号(失敗で -1)
+	 */
+	function duplicateLayer(index);
+
+	/**
+	 * 別の PSD インスタンスからレイヤをコピー挿入する。
+	 * カラーモード/ビット深度が一致している必要がある。コピー元 PSD は
+	 * この PSD の save() が終わるまで生存している必要がある。
+	 * @param src      コピー元 PSD インスタンス
+	 * @param srcIndex コピー元レイヤ番号
+	 * @param destIndex 挿入位置(負値で末尾)
+	 * @return 新レイヤ番号(失敗で -1)
+	 */
+	function copyLayerFrom(src, srcIndex, destIndex);
+
+	/**
+	 * レイヤを改名する(pascal 名 + luni 名の両方を更新)
+	 * @param index レイヤ番号
+	 * @param name  新しい名前
+	 * @return 成功したら true
+	 */
+	function setLayerName(index, name);
+
+	/**
+	 * 塗り不透明度(fill opacity)を編集する
+	 * @param index   レイヤ番号
+	 * @param opacity 0..255
+	 * @return 成功したら true
+	 */
+	function setFillOpacity(index, opacity);
+
+	/**
+	 * マスク無効フラグを編集する(マスクを持つレイヤのみ)
+	 * @param index    レイヤ番号
+	 * @param disabled マスクを無効にするか
+	 * @return 成功したら true
+	 */
+	function setMaskDisabled(index, disabled);
+
+	/**
+	 * ユーザーマスク濃度を編集する(マスクを持つレイヤのみ)
+	 * @param index   レイヤ番号
+	 * @param density 0..255
+	 * @return 成功したら true
+	 */
+	function setMaskDensity(index, density);
+
+	/**
+	 * ユーザーマスクぼかしを編集する(マスクを持つレイヤのみ)
+	 * @param index   レイヤ番号
+	 * @param feather ぼかし半径(px)
+	 * @return 成功したら true
+	 */
+	function setMaskFeather(index, feather);
+
+	/**
+	 * マスク既定色を編集する(マスクを持つレイヤのみ)
+	 * @param index レイヤ番号
+	 * @param color 0..255
+	 * @return 成功したら true
+	 */
+	function setMaskDefaultColor(index, color);
+
+	/**
+	 * 既存レイヤの画素を Layer オブジェクトの内容で差し替える。
+	 * Layer の imageWidth×imageHeight・BGRA を取り込む。left/top は保持し
+	 * width/height は更新される。8bit RGB 文書のみ。
+	 * @param index レイヤ番号
+	 * @param layer 画素供給元 Layer
+	 * @return 成功したら true
+	 */
+	function setLayerPixels(index, layer);
+
+	/**
+	 * レイヤのマスク画素を Layer オブジェクトの内容(B 成分をグレーとして使用)で
+	 * 差し替える。マスク矩形も (top,left,imageWidth,imageHeight) に設定する。
+	 * マスクが無ければ新規作成する。8bit 文書のみ。
+	 * @param index レイヤ番号
+	 * @param layer マスク供給元 Layer
+	 * @param top   マスク上端
+	 * @param left  マスク左端
+	 * @return 成功したら true
+	 */
+	function setLayerMaskPixels(index, layer, top, left);
+
+	/**
+	 * 新規画像レイヤを追加する。Layer の imageWidth×imageHeight・BGRA を取り込む。
+	 * 8bit RGB 文書のみ。
+	 * @param name      レイヤ名
+	 * @param left      左座標
+	 * @param top       上座標
+	 * @param layer     画素供給元 Layer
+	 * @param blendMode 合成モード(blend_mode_*、既定 blend_mode_normal)
+	 * @param opacity   不透明度 0..255(既定 255)
+	 * @param destIndex 挿入位置(負値で末尾)
+	 * @return 新レイヤ番号(失敗で -1)
+	 */
+	function addLayer(name, left, top, layer, blendMode=blend_mode_normal, opacity=255, destIndex=-1);
+
+	/**
+	 * 合成済み画像(プレビュー/getBlend の元)を Layer の内容で差し替える。
+	 * Layer のサイズは canvas サイズ(width×height)と一致している必要がある。
+	 * 8bit RGB 文書のみ。
+	 * @param layer 画素供給元 Layer
+	 * @return 成功したら true
+	 */
+	function setMergedImage(layer);
+
+	/**
+	 * テキストレイヤの本文を差し替える(スタイルは先頭ランに畳まれる)。
+	 * テキストレイヤ以外や TySh ブロックが無い場合は例外。
+	 * @param index レイヤ番号
+	 * @param text  新しい本文(改行は \r)
+	 */
+	function setLayerText(index, text);
+
+	/**
+	 * テキストレイヤの runIndex 番目のラン(getLayerInfo().text.runs に対応)の
+	 * スタイルを編集する。style 辞書のうち指定されたキーだけ上書きする。
+	 *   %[ size_px:   // フォントサイズ(px)
+	 *      color:     // RGBA 各 0..1 の配列 [ r, g, b, a ]
+	 *      tracking:  // トラッキング(1/1000 em)
+	 *      kerning:   // 手動カーニング
+	 *      bold:      // 疑似ボールド(FauxBold) true/false
+	 *      italic:    // 疑似イタリック(FauxItalic) true/false
+	 *      underline: // 下線(Underline) true/false
+	 *    ]
+	 * テキストレイヤ以外や runIndex 範囲外の場合は例外。
+	 * @param index    レイヤ番号
+	 * @param runIndex ラン番号
+	 * @param style    スタイル辞書
+	 */
+	function setLayerRunStyle(index, runIndex, style);
 
 	/**
 	 * static method

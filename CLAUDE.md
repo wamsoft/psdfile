@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-吉里吉里Z (KirikiriZ) 用の PSD 読み込みプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 直結の単一リポジトリだったが、2026-06-12 に PSD パース/書き出しコア部分を [wamsoft/psdparse](https://github.com/wamsoft/psdparse) に分離。psdfile は **psdparse を submodule で取り込んで吉里吉里バインドを行う薄いラッパー** の構成になった。
+吉里吉里Z (KirikiriZ) 用の PSD 読み込み/編集/書き出しプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 直結の単一リポジトリだったが、2026-06-12 に PSD パース/書き出しコア部分を [wamsoft/psdparse](https://github.com/wamsoft/psdparse) に分離。psdfile は **psdparse を submodule で取り込んで吉里吉里バインドを行う薄いラッパー** の構成になった。読み込みに加え、psdparse v0.7+ の編集機能 (レイヤ構造/画素/マスク/テキスト編集・新規作成・`save`) も公開している (「編集系 API」節)。
 
 ユーザー向け TJS2 API は `manual.tjs` が正本。`NCB_REGISTER_CLASS(PSD)` の登録内容と齟齬が出ないように維持する。
 
@@ -89,16 +89,46 @@ psdclass_loadstream.cpp 無名 ns
 
 ### テキストレイヤ ('TySh')
 
-psdparse v0.2.0 で追加された `LayerInfo::textData` (`psd::TextLayerData`) を
+psdparse で追加された `LayerInfo::textData` (`psd::TextLayerData`) を
 `getLayerInfo()` が辞書キー `text` として転送する (テキストレイヤ = `layer_type_text`(=5)
 のときのみ。それ以外はキー自体を設定しない)。中身は `text` / `orientation` /
 `justification` / `transform[6]` / `runs[]`(ラン単位の font・size_px・color[RGBA]・
-tracking・kerning・auto_kerning)。psdparse 側で 'TySh' の追加レイヤ情報 → Adobe
-*EngineData* ミニ言語を `psdengine.cpp` が解析して埋める。`layer_type_text` 定数も
-`NCB_REGISTER_CLASS(PSD)` / `manual.tjs` に追加済み。未対応 (psdparse 側 ROADMAP):
-非RGB FillColor・warp text・段落テキスト境界・leading/下線等。
+tracking・kerning・auto_kerning) / `paragraphs[]`(段落別の length・justification)。
+psdparse 側で 'TySh' の追加レイヤ情報 → Adobe *EngineData* ミニ言語を `psdengine.cpp`
+が解析して埋める。`layer_type_text` 定数も `NCB_REGISTER_CLASS(PSD)` / `manual.tjs` に
+追加済み。未対応 (psdparse 側 ROADMAP): 非RGB FillColor・warp text・段落テキスト境界等。
 
-psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / StreamReader / WriterBase / round-trip save / EngineData パースの仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) と [docs/PYTHON_API.md](external/psdparse/docs/PYTHON_API.md) の `layer.text` 節を参照。
+### 編集系 API (psdparse v0.7+)
+
+psdparse v0.8.0 (submodule ref `e4e9d8f`) で編集機能一式が入ったのを受け、吉里吉里
+バインドにも公開した。実装は `psdclass.cpp` に PSD メンバとして薄く被せている:
+
+- **参照追加**: `hresolution`/`vresolution` プロパティ (`header.hres/vres`)、
+  `getLayerInfo()` に `mask_params`(density/feather) と text の `paragraphs`。
+- **構造編集**: `deleteLayer` / `moveLayer` / `duplicateLayer` / `copyLayerFrom` /
+  `setLayerName` / `setFillOpacity` / `setMask*` — 大半は `psd::PSDFile::*` への
+  pass-through + 構造変化時に `invalidateStorageCache()` (psd:// キャッシュ破棄)。
+- **画素編集**: `setLayerPixels` / `setLayerMaskPixels` / `addLayer` / `setMergedImage`
+  — 吉里吉里 `Layer` の `mainImageBuffer`(BGRA) を `readLayerBGRA()` で tight-pack して
+  psdparse に渡す。8bit RGB 文書のみ (psdparse 側制約)。
+- **新規作成 / 保存**: `createBlank(w,h)` / `save(filename)`。save は `TVPGetLocalName`
+  でローカルパス化 → `NarrowString` (fopen ベースの `FileWriter`)。
+- **テキスト編集**: `setLayerText` / `setLayerRunStyle`。psdparse の C++ ライブラリには
+  PSDFile レベルの text 編集入口が無く、`python/psdparse_module.cpp` の `editTextLayer`
+  (TySh 分解 → EngineData を `editEngineDataText`/`editEngineDataRunStyle` で変換 →
+  `writeDescriptorBody` で再直列化 → `setAdditionalInfoBytes('TySh', …)`) を
+  `psdclass.cpp` の `editTextLayerImpl` にテンプレートとして移植した (psdparse の
+  公開 C++ API のみ使用。submodule には手を入れていない)。
+
+補助変換: `tjsToU16`(ttstr→u16str)、`tjsToUtf8`(ttstr→UTF-8。luni 名生成用)、
+`blendModeToKey`(psd::BlendMode→4CC。`addLayer` 用)。
+
+編集後の合成画像 (getBlend の元) は古いままになる (psdparse 側仕様 — Photoshop が
+開いて再合成するまで反映されない)。
+
+psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / VectorReader /
+StreamReader / WriterBase / MemoryWriter / round-trip save / EngineData パース・
+再直列化・編集の仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) と [docs/PYTHON_API.md](external/psdparse/docs/PYTHON_API.md) を参照。
 
 ## 行儀よく避ける改変
 
