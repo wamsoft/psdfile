@@ -31,6 +31,7 @@ krkrz_plugin(psdfile
         psdclass.cpp
         psdclass_loadstream.cpp
         main.cpp
+        LicensesGen.cpp
     LIBRARIES
         psdparse
 )

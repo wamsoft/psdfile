@@ -274,4 +274,9 @@ void doneStorage()
 }
 
 NCB_PRE_REGIST_CALLBACK(initStorage);
+// 同梱コンポーネントのライセンスを本体収集機構へ登録
+// (LicensesGen.cpp = licenses/manifest.json から生成)
+extern void RegisterPsdfileLicenses();
+NCB_PRE_REGIST_CALLBACK(RegisterPsdfileLicenses);
+
 NCB_POST_UNREGIST_CALLBACK(doneStorage);
