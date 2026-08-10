@@ -3,6 +3,10 @@
 
 #include "tp_stub.h"
 
+/* License API 非対応バージョンの tp_stub / 本体ヘッダと組み合わせた
+   ビルドでは登録をまるごとスキップして空関数になる (互換ガード)。 */
+#ifdef TVP_HAS_LICENSE_API
+
 /* psdparse (1064 -> 632 bytes) */
 static const unsigned char lic_00[] = {
 	120,218,93,82,205,110,219,48,12,190,235,41,136,156,90,192,232,134,30,118,216,77,177,149,
@@ -38,3 +42,9 @@ void RegisterPsdfileLicenses()
 {
 	TVPRegisterLicense(TJS_W("psdparse"), TJS_W("plugin:psdfile"), lic_00, 632, 1064);
 }
+
+#else /* !TVP_HAS_LICENSE_API */
+
+void RegisterPsdfileLicenses() {}
+
+#endif /* TVP_HAS_LICENSE_API */
