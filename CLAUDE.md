@@ -93,38 +93,49 @@ psdparse で追加された `LayerInfo::textData` (`psd::TextLayerData`) を
 `getLayerInfo()` が辞書キー `text` として転送する (テキストレイヤ = `layer_type_text`(=5)
 のときのみ。それ以外はキー自体を設定しない)。中身は `text` / `orientation` /
 `justification` / `transform[6]` / `runs[]`(ラン単位の font・size_px・color[RGBA]・
-tracking・kerning・auto_kerning) / `paragraphs[]`(段落別の length・justification)。
+tracking・kerning・auto_kerning・bold・italic・underline) / `paragraphs[]`(段落別の
+length・justification)。
 psdparse 側で 'TySh' の追加レイヤ情報 → Adobe *EngineData* ミニ言語を `psdengine.cpp`
 が解析して埋める。`layer_type_text` 定数も `NCB_REGISTER_CLASS(PSD)` / `manual.tjs` に
 追加済み。未対応 (psdparse 側 ROADMAP): 非RGB FillColor・warp text・段落テキスト境界等。
 
 ### 編集系 API (psdparse v0.7+)
 
-psdparse v0.8.0 (submodule ref `e4e9d8f`) で編集機能一式が入ったのを受け、吉里吉里
-バインドにも公開した。実装は `psdclass.cpp` に PSD メンバとして薄く被せている:
+psdparse v0.8.0 で編集機能一式が入ったのを受け吉里吉里バインドに公開し、v0.10.0
+(submodule ref `f521d2f`) でリッチテキスト / テキスト配置 / フォルダ対応レイヤ移動を
+追加公開した。実装は `psdclass.cpp` に PSD メンバとして薄く被せている:
 
 - **参照追加**: `hresolution`/`vresolution` プロパティ (`header.hres/vres`)、
-  `getLayerInfo()` に `mask_params`(density/feather) と text の `paragraphs`。
+  `getLayerInfo()` に `mask_params`(density/feather) と text の `paragraphs` /
+  ラン単位の `bold`/`italic`/`underline`。
 - **構造編集**: `deleteLayer` / `moveLayer` / `duplicateLayer` / `copyLayerFrom` /
   `setLayerName` / `setFillOpacity` / `setMask*` — 大半は `psd::PSDFile::*` への
   pass-through + 構造変化時に `invalidateStorageCache()` (psd:// キャッシュ破棄)。
+- **フォルダ対応の移動**: `groupSpan`(→ `%[start,count]`) / `moveLayerSibling`(→ 新
+  index、端で -1) / `moveLayerRange`。`moveLayer` はフォルダを塊で動かさないので、
+  グループごと動かすときはこちら。
 - **画素編集**: `setLayerPixels` / `setLayerMaskPixels` / `addLayer` / `setMergedImage`
   — 吉里吉里 `Layer` の `mainImageBuffer`(BGRA) を `readLayerBGRA()` で tight-pack して
   psdparse に渡す。8bit RGB 文書のみ (psdparse 側制約)。
 - **新規作成 / 保存**: `createBlank(w,h)` / `save(filename)`。save は `TVPGetLocalName`
   でローカルパス化 → `NarrowString` (fopen ベースの `FileWriter`)。
-- **テキスト編集**: `setLayerText` / `setLayerRunStyle`。psdparse の C++ ライブラリには
-  PSDFile レベルの text 編集入口が無く、`python/psdparse_module.cpp` の `editTextLayer`
-  (TySh 分解 → EngineData を `editEngineDataText`/`editEngineDataRunStyle` で変換 →
-  `writeDescriptorBody` で再直列化 → `setAdditionalInfoBytes('TySh', …)`) を
-  `psdclass.cpp` の `editTextLayerImpl` にテンプレートとして移植した (psdparse の
-  公開 C++ API のみ使用。submodule には手を入れていない)。
+- **テキスト編集**: `setLayerText` / `setLayerRunStyle` / `setLayerRichText` /
+  `setLayerJustification` / `getLayerFonts`、配置系に `get,setLayerTextTransform` /
+  `moveTextLayer` / `get,setLayerTextBounds`。v0.9.0 でテキスト編集が psdparse の
+  C++ ライブラリ側 (`psd::PSDFile::setLayerText` 等) へ上がったので、v0.8 時代に
+  `psdclass.cpp` が持っていた python glue の移植 (`editTextLayerImpl`) は削除済み。
+  現在は「TJS 引数 → `RunStyleEdit`/`TextRunSpec`/`TextParagraphSpec` 変換 +
+  `errorOut` の例外化」だけを行う (`readRunStyleEdit` / `throwTextError`)。
 
-補助変換: `tjsToU16`(ttstr→u16str)、`tjsToUtf8`(ttstr→UTF-8。luni 名生成用)、
-`blendModeToKey`(psd::BlendMode→4CC。`addLayer` 用)。
+補助変換: `tjsToU16`(ttstr→u16str)、`tjsToUtf8`(ttstr→UTF-8。luni 名 / フォント名用)、
+`blendModeToKey`(psd::BlendMode→4CC。`addLayer` 用)。省略引数を持つ
+`addLayer` / `setLayerRichText` / `setLayerJustification` / `moveLayerSibling` は
+ncbind の `RawCallback` で公開している (NCB_METHOD は既定値を扱えないため)。
 
 編集後の合成画像 (getBlend の元) は古いままになる (psdparse 側仕様 — Photoshop が
-開いて再合成するまで反映されない)。
+開いて再合成するまで反映されない)。テキストのラスタも同様で、psdparse は字形を
+再描画しないため `moveTextLayer` / `setLayerTextBounds` 等の結果は Photoshop で
+開き直したときに反映される。
 
 psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / VectorReader /
 StreamReader / WriterBase / MemoryWriter / round-trip save / EngineData パース・

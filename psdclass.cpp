@@ -1,9 +1,8 @@
 #include <ncbind.hpp>
 #include "psdclass.h"
-#include "psddesc.h"    // 編集系: Descriptor / DescriptorString / DescriptorRawData
-#include "psdengine.h"  // 編集系: editEngineDataText / editEngineDataRunStyle
-#include "psdwrite.h"   // 編集系: MemoryWriter / writeDescriptorBody
+#include "psdengine.h"  // 編集系: RunStyleEdit / TextRunSpec / TextParagraphSpec
 #include <vector>
+#include <string>
 
 #define BMPEXT TJS_W(".bmp")
 
@@ -459,6 +458,10 @@ PSD::getLayerInfo(int no)
 							rdict.SetValue(TJS_W("tracking"),     run.tracking);
 							rdict.SetValue(TJS_W("kerning"),      run.kerning);
 							rdict.SetValue(TJS_W("auto_kerning"), run.autoKerning);
+							// 疑似ボールド/イタリック/下線 (psdparse v0.9.0 で追加)
+							rdict.SetValue(TJS_W("bold"),         run.bold);
+							rdict.SetValue(TJS_W("italic"),       run.italic);
+							rdict.SetValue(TJS_W("underline"),    run.underline);
 							truns.SetValue((tjs_int32)i, rdict.GetDispatch());
 						}
 					}
@@ -1143,6 +1146,38 @@ PSD::moveLayer(int from, int to)
 	return r;
 }
 
+tTJSVariant
+PSD::groupSpan(int index)
+{
+	tTJSVariant result;
+	int start = index, count = 1;
+	if (!psd::PSDFile::groupSpan(index, start, count)) return result;  // 範囲外は void
+	ncbDictionaryAccessor dict;
+	if (dict.IsValid()) {
+		dict.SetValue(TJS_W("start"), start);
+		dict.SetValue(TJS_W("count"), count);
+		result = dict;
+	}
+	return result;
+}
+
+int
+PSD::moveLayerSibling(int index, bool up)
+{
+	int newIndex = index;
+	if (!psd::PSDFile::moveLayerSibling(index, up, &newIndex)) return -1;
+	invalidateStorageCache();
+	return newIndex;
+}
+
+bool
+PSD::moveLayerRange(int from, int count, int to)
+{
+	bool r = psd::PSDFile::moveLayerRange(from, count, to);
+	if (r) invalidateStorageCache();
+	return r;
+}
+
 int
 PSD::duplicateLayer(int index)
 {
@@ -1230,79 +1265,28 @@ PSD::setMergedImage(tTJSVariant layer)
 }
 
 // --- テキストレイヤ編集 -----------------------------------------------------
-// psdparse の Python glue (editTextLayer) を吉里吉里バインドに移植したもの。
-// TySh ブロック (version/transform prefix + descriptor + warp/bounds suffix) を
-// パースし、埋め込みの EngineData を editEngine で変換、必要なら 'Txt ' 文字列も
-// 差し替えて TySh を再直列化し、レイヤ extra data に戻す。psdparse の公開 C++
-// API のみ使用 (submodule には手を入れない)。
-template <class EditFn>
-static bool editTextLayerImpl(psd::PSDFile &self, int index, EditFn editEngine,
-                              const psd::u16str *newTxt, ttstr &err)
+// psdparse v0.9.0 でテキスト編集一式が C++ ライブラリ側 (psd::PSDFile::setLayerText
+// 等) へ上がったので、吉里吉里バインドは引数変換とエラーの例外化だけを行う薄い層に
+// なっている (v0.8 までは python/psdparse_module.cpp の glue を移植して持っていた)。
+
+// psdparse 側の失敗理由 (ASCII) を吉里吉里例外にして投げる。
+static void throwTextError(const std::string &err)
 {
-	if (index < 0 || index >= (int)self.layerList.size()) {
-		err = TJS_W("layer index out of range");
-		return false;
-	}
-	psd::LayerInfo &lay = self.layerList[(size_t)index];
-	for (std::vector<psd::AdditionalLayerInfo>::iterator it = lay.extraData.additionalLayers.begin();
-	     it != lay.extraData.additionalLayers.end(); ++it) {
-		if (it->key != 'TySh' || !it->data) continue;
-		psd::IteratorBase *rd = it->data->clone();
-		rd->init();
-		// prefix: version(2) + transform(6*8) + textVer(2) + descVer(4) = 56
-		uint8_t prefix[56];
-		if (rd->getData(prefix, 56) != 56) { delete rd; err = TJS_W("TySh block too short"); return false; }
-		psd::Descriptor td;
-		td.load(rd);
-		int restLen = rd->rest();
-		std::vector<uint8_t> suffix((size_t)(restLen > 0 ? restLen : 0));
-		if (restLen > 0) rd->getData(suffix.data(), restLen);  // warp + bounds
-		delete rd;
-
-		psd::DescriptorRawData *eng =
-			dynamic_cast<psd::DescriptorRawData *>(td.findItem("EngineData"));
-		if (!eng) { err = TJS_W("text layer has no EngineData"); return false; }
-		std::string newEngine;
-		if (!editEngine(eng->bytes, newEngine)) { err = TJS_W("failed to edit EngineData"); return false; }
-		eng->bytes = newEngine;
-		if (newTxt) {
-			psd::DescriptorString *txt =
-				dynamic_cast<psd::DescriptorString *>(td.findItem("Txt "));
-			if (txt) txt->val = *newTxt;
-		}
-
-		std::vector<uint8_t> buf;
-		psd::MemoryWriter w(buf);
-		w.putData(prefix, sizeof(prefix));
-		psd::writeDescriptorBody(w, &td);
-		if (!suffix.empty()) w.putData(suffix.data(), suffix.size());
-		self.setAdditionalInfoBytes(index, 'TySh', buf.data(), (int)buf.size());
-		return true;
-	}
-	err = TJS_W("layer is not a text layer (no TySh block)");
-	return false;
+	ttstr msg = err.empty() ? ttstr(TJS_W("text layer edit failed"))
+	                        : ttstr(err.c_str());
+	TVPThrowExceptionMessage(msg.c_str());
 }
 
-void
-PSD::setLayerText(int index, ttstr text)
+// スタイル辞書 (font/size_px/color/tracking/kerning/bold/italic/underline) を
+// RunStyleEdit へ読み取る。存在するキーだけ has* を立てて上書き対象にする。
+static void readRunStyleEdit(tTJSVariant style, psd::RunStyleEdit &edit)
 {
-	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
-	psd::u16str newText = tjsToU16(text);
-	ttstr err;
-	bool ok = editTextLayerImpl(*this, index,
-		[&](const std::string &in, std::string &out) {
-			return psd::editEngineDataText(in.data(), in.size(), newText, out);
-		}, &newText, err);
-	if (!ok) TVPThrowExceptionMessage(err.c_str());
-}
-
-void
-PSD::setLayerRunStyle(int index, int runIndex, tTJSVariant style)
-{
-	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
-	psd::RunStyleEdit edit;
+	if (style.Type() != tvtObject) return;
 	ncbPropAccessor s(style);
-	// 指定されたキーだけ has* を立てて上書きする。
+	if (s.HasValue(TJS_W("font"))) {
+		edit.hasFont = true;
+		edit.font = tjsToUtf8(s.getStrValue(TJS_W("font")));
+	}
 	if (s.HasValue(TJS_W("size_px"))) {
 		edit.hasSize = true;
 		edit.size = (double)s.getRealValue(TJS_W("size_px"));
@@ -1329,17 +1313,205 @@ PSD::setLayerRunStyle(int index, int runIndex, tTJSVariant style)
 	}
 	if (s.HasValue(TJS_W("color"))) {
 		tTJSVariant cv = s.GetValue(TJS_W("color"), ncbTypedefs::Tag<tTJSVariant>());
-		ncbPropAccessor col(cv);
-		edit.hasColor = true;
-		for (int c = 0; c < 4; c++)
-			edit.color[c] = (float)col.getRealValue((tjs_int)c);
+		if (cv.Type() == tvtObject) {
+			ncbPropAccessor col(cv);
+			// [r, g, b] の 3 要素指定も許す (a は 1.0 のまま)
+			int n = (int)col.GetArrayCount();
+			if (n > 4) n = 4;
+			if (n > 0) {
+				edit.hasColor = true;
+				for (int c = 0; c < n; c++)
+					edit.color[c] = (float)col.getRealValue((tjs_int)c);
+			}
+		}
 	}
-	ttstr err;
-	bool ok = editTextLayerImpl(*this, index,
-		[&](const std::string &in, std::string &out) {
-			return psd::editEngineDataRunStyle(in.data(), in.size(), runIndex, edit, out);
-		}, (const psd::u16str *)0, err);
-	if (!ok) TVPThrowExceptionMessage(err.c_str());
+}
+
+void
+PSD::setLayerText(int index, ttstr text)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	std::string err;
+	if (!psd::PSDFile::setLayerText(index, tjsToU16(text), &err)) throwTextError(err);
+}
+
+void
+PSD::setLayerRunStyle(int index, int runIndex, tTJSVariant style)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	psd::RunStyleEdit edit;
+	readRunStyleEdit(style, edit);
+	std::string err;
+	if (!psd::PSDFile::setLayerRunStyle(index, runIndex, edit, &err)) throwTextError(err);
+}
+
+void
+PSD::setLayerRichText(int index, ttstr text, tTJSVariant runs, tTJSVariant paragraphs)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	// runs: %[ length:, <style keys> ] の配列。void / 空なら単一ランへ畳まれる。
+	std::vector<psd::TextRunSpec> runSpecs;
+	if (runs.Type() == tvtObject) {
+		ncbPropAccessor ra(runs);
+		int n = (int)ra.GetArrayCount();
+		for (int i = 0; i < n; i++) {
+			tTJSVariant rv = ra.GetValue((tjs_int)i, ncbTypedefs::Tag<tTJSVariant>());
+			if (rv.Type() != tvtObject) continue;
+			ncbPropAccessor r(rv);
+			psd::TextRunSpec spec;
+			spec.length = (int)r.getIntValue(TJS_W("length"));
+			readRunStyleEdit(rv, spec.style);
+			runSpecs.push_back(spec);
+		}
+	}
+	// paragraphs: %[ length:, justification: ] の配列。
+	std::vector<psd::TextParagraphSpec> parSpecs;
+	if (paragraphs.Type() == tvtObject) {
+		ncbPropAccessor pa(paragraphs);
+		int n = (int)pa.GetArrayCount();
+		for (int i = 0; i < n; i++) {
+			tTJSVariant pv = pa.GetValue((tjs_int)i, ncbTypedefs::Tag<tTJSVariant>());
+			if (pv.Type() != tvtObject) continue;
+			ncbPropAccessor p(pv);
+			psd::TextParagraphSpec spec;
+			spec.length = (int)p.getIntValue(TJS_W("length"));
+			if (p.HasValue(TJS_W("justification"))) {
+				spec.hasJustification = true;
+				spec.justification = (int)p.getIntValue(TJS_W("justification"));
+			}
+			parSpecs.push_back(spec);
+		}
+	}
+	std::string err;
+	if (!psd::PSDFile::setLayerRichText(index, tjsToU16(text), runSpecs, parSpecs, &err))
+		throwTextError(err);
+}
+
+void
+PSD::setLayerJustification(int index, int justification, int paraIndex)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	std::string err;
+	if (!psd::PSDFile::setLayerJustification(index, paraIndex, justification, &err))
+		throwTextError(err);
+}
+
+tTJSVariant
+PSD::getLayerFonts(int index)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	std::vector<std::string> names;  // UTF-8
+	std::string err;
+	if (!psd::PSDFile::getLayerFonts(index, names, &err)) throwTextError(err);
+	tTJSVariant result;
+	ncbArrayAccessor arr;
+	if (arr.IsValid()) {
+		for (int i = 0; i < (int)names.size(); i++)
+			arr.SetValue((tjs_int32)i, u16ToTjs(psd::utf8ToU16(names[i])));
+		result = arr;
+	}
+	return result;
+}
+
+tTJSVariant
+PSD::getLayerTextTransform(int index)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	double m[6];
+	std::string err;
+	if (!psd::PSDFile::getLayerTextTransform(index, m, &err)) throwTextError(err);
+	tTJSVariant result;
+	ncbArrayAccessor arr;
+	if (arr.IsValid()) {
+		for (int i = 0; i < 6; i++) arr.SetValue((tjs_int32)i, m[i]);
+		result = arr;
+	}
+	return result;
+}
+
+void
+PSD::setLayerTextTransform(int index, tTJSVariant matrix)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	if (matrix.Type() != tvtObject)
+		TVPThrowExceptionMessage(TJS_W("transform must be an array of 6 numbers"));
+	ncbPropAccessor ma(matrix);
+	if ((int)ma.GetArrayCount() < 6)
+		TVPThrowExceptionMessage(TJS_W("transform must be an array of 6 numbers"));
+	double m[6];
+	for (int i = 0; i < 6; i++) m[i] = (double)ma.getRealValue((tjs_int)i);
+	std::string err;
+	if (!psd::PSDFile::setLayerTextTransform(index, m, &err)) throwTextError(err);
+}
+
+void
+PSD::moveTextLayer(int index, double dx, double dy)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	std::string err;
+	if (!psd::PSDFile::moveTextLayer(index, dx, dy, &err)) throwTextError(err);
+}
+
+tTJSVariant
+PSD::getLayerTextBounds(int index)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	double l, t, r, b;
+	std::string err;
+	if (!psd::PSDFile::getLayerTextBounds(index, l, t, r, b, &err)) throwTextError(err);
+	tTJSVariant result;
+	ncbDictionaryAccessor dict;
+	if (dict.IsValid()) {
+		dict.SetValue(TJS_W("left"),   l);
+		dict.SetValue(TJS_W("top"),    t);
+		dict.SetValue(TJS_W("right"),  r);
+		dict.SetValue(TJS_W("bottom"), b);
+		result = dict;
+	}
+	return result;
+}
+
+void
+PSD::setLayerTextBounds(int index, double left, double top, double right, double bottom)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	std::string err;
+	if (!psd::PSDFile::setLayerTextBounds(index, left, top, right, bottom, &err))
+		throwTextError(err);
+}
+
+// setLayerRichText(index, text, runs=void, paragraphs=void) /
+// setLayerJustification(index, justification, paraIndex=-1) /
+// moveLayerSibling(index, up=true) の省略引数用 RawCallback。
+static tjs_error SetLayerRichText(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	int   index = (tjs_int)*params[0];
+	ttstr text  = *params[1];
+	tTJSVariant runs       = numparams > 2 ? *params[2] : tTJSVariant();
+	tTJSVariant paragraphs = numparams > 3 ? *params[3] : tTJSVariant();
+	instance->setLayerRichText(index, text, runs, paragraphs);
+	return TJS_S_OK;
+}
+
+static tjs_error SetLayerJustification(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	int index         = (tjs_int)*params[0];
+	int justification = (tjs_int)*params[1];
+	int paraIndex     = numparams > 2 ? (tjs_int)*params[2] : -1;
+	instance->setLayerJustification(index, justification, paraIndex);
+	return TJS_S_OK;
+}
+
+static tjs_error MoveLayerSibling(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
+	int  index = (tjs_int)*params[0];
+	bool up    = numparams > 1 ? ((tjs_int)*params[1] != 0) : true;
+	int idx = instance->moveLayerSibling(index, up);
+	if (r) *r = (tjs_int)idx;
+	return TJS_S_OK;
 }
 
 NCB_REGISTER_CLASS(PSD) {
@@ -1430,6 +1602,9 @@ NCB_REGISTER_CLASS(PSD) {
 	NCB_METHOD(createBlank);
 	NCB_METHOD(deleteLayer);
 	NCB_METHOD(moveLayer);
+	NCB_METHOD(groupSpan);
+	RawCallback("moveLayerSibling", &MoveLayerSibling, 0);
+	NCB_METHOD(moveLayerRange);
 	NCB_METHOD(duplicateLayer);
 	NCB_METHOD(copyLayerFrom);
 	NCB_METHOD(setLayerName);
@@ -1444,5 +1619,13 @@ NCB_REGISTER_CLASS(PSD) {
 	NCB_METHOD(setMergedImage);
 	NCB_METHOD(setLayerText);
 	NCB_METHOD(setLayerRunStyle);
+	RawCallback("setLayerRichText", &SetLayerRichText, 0);
+	RawCallback("setLayerJustification", &SetLayerJustification, 0);
+	NCB_METHOD(getLayerFonts);
+	NCB_METHOD(getLayerTextTransform);
+	NCB_METHOD(setLayerTextTransform);
+	NCB_METHOD(moveTextLayer);
+	NCB_METHOD(getLayerTextBounds);
+	NCB_METHOD(setLayerTextBounds);
 };
 

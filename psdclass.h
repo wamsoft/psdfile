@@ -174,6 +174,14 @@ public:
 	bool deleteLayer(int index);
 	/** レイヤを from から to へ移動する (to は削除後リストでの挿入位置)。 */
 	bool moveLayer(int from, int to);
+	/** レイヤが占める塊 (フォルダなら区切り+中身) を %[ start:, count: ] で返す。
+	 *  範囲外なら void。 */
+	tTJSVariant groupSpan(int index);
+	/** 同じ階層の隣の兄弟と入れ替える (フォルダは塊ごと)。up=true で表示上ひとつ上。
+	 *  移動後の自分のインデックス。端で動かせない場合は -1。 */
+	int  moveLayerSibling(int index, bool up);
+	/** [from, from+count) を to へ移動する (to は取り除く前のインデックス)。 */
+	bool moveLayerRange(int from, int count, int to);
 	/** レイヤを複製し、複製の新インデックスを返す。失敗 -1。 */
 	int  duplicateLayer(int index);
 	/** 別 PSD からレイヤをコピー挿入する。destIndex<0 で末尾。新インデックス、失敗 -1。 */
@@ -205,9 +213,28 @@ public:
 	/** テキストレイヤの本文を差し替える (スタイルは先頭ランに畳まれる)。 */
 	void setLayerText(int index, ttstr text);
 	/** テキストレイヤの runIndex 番目のランのスタイルを編集する。style は辞書
-	 *  %[ size_px, color:[r,g,b,a], tracking, kerning, bold, italic, underline ]
+	 *  %[ font, size_px, color:[r,g,b,a], tracking, kerning, bold, italic, underline ]
 	 *  (指定したキーだけ上書き)。 */
 	void setLayerRunStyle(int index, int runIndex, tTJSVariant style);
+	/** 本文とラン構成 / 段落構成をまとめて差し替える (書式付きテキスト編集)。
+	 *  runs は %[ length, <setLayerRunStyle の style キー> ] の配列、
+	 *  paragraphs は %[ length, justification ] の配列 (どちらも void 可)。 */
+	void setLayerRichText(int index, ttstr text, tTJSVariant runs, tTJSVariant paragraphs);
+	/** 段落の行揃えだけ変える。paraIndex < 0 で全段落。0=左 1=右 2=中央。 */
+	void setLayerJustification(int index, int justification, int paraIndex);
+	/** テキストレイヤの EngineData が持つフォント名一覧 (配列)。 */
+	tTJSVariant getLayerFonts(int index);
+
+	/** テキストレイヤのアフィン変換 [xx,xy,yx,yy,tx,ty] を配列で返す。 */
+	tTJSVariant getLayerTextTransform(int index);
+	/** テキストレイヤのアフィン変換を差し替える (要素 6 個の配列)。 */
+	void setLayerTextTransform(int index, tTJSVariant matrix);
+	/** テキストレイヤを平行移動する (変換の tx/ty とレイヤ/マスク矩形の両方)。 */
+	void moveTextLayer(int index, double dx, double dy);
+	/** 流し込み枠を %[ left:, top:, right:, bottom: ] で返す (変換のローカル座標)。 */
+	tTJSVariant getLayerTextBounds(int index);
+	/** 流し込み枠を差し替える (変換のローカル座標)。 */
+	void setLayerTextBounds(int index, double left, double top, double right, double bottom);
 
 protected:
 	iTJSDispatch2 *objthis; ///< 自己オブジェクト情報の参照

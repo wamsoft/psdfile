@@ -152,6 +152,9 @@ class PSD {
 	 *           tracking:     // トラッキング(字送り, 1/1000 em)
 	 *           kerning:      // 手動カーニング
 	 *           auto_kerning: // 自動カーニング(メトリクス/オプティカル)有効か
+	 *           bold:         // 疑似ボールド(FauxBold)
+	 *           italic:       // 疑似イタリック(FauxItalic)
+	 *           underline:    // 下線(Underline)
 	 *         ],... ]
 	 *      paragraphs: [   // 段落別の行揃え(box text で段落ごとに揃えが変わる用)
 	 *        %[ length:        // 段落の文字数(UTF-16 コードユニット)
@@ -290,7 +293,9 @@ class PSD {
 	// 再構築される。画素/レイヤ追加系は 8bit RGB 文書のみ対応。編集後は psd://
 	// ストレージのレイヤ検索キャッシュが破棄される。
 	// 注意: 合成画像(getBlend の元)は編集しても古いままになる
-	//       (Photoshop で開いて再合成するまで反映されない)。
+	//       (Photoshop で開いて再合成するまで反映されない)。テキストの字形も
+	//       再描画されないので、本文/書式/配置の変更が絵に出るのは Photoshop で
+	//       開き直したとき。
 	// ========================================================================
 
 	/**
@@ -323,6 +328,39 @@ class PSD {
 	 * @return 成功したら true
 	 */
 	function moveLayer(from, to);
+
+	/**
+	 * レイヤがレイヤ一覧上で占める「塊」を返す。
+	 * フォルダ(layer_type_folder)の場合は対応する区切り(layer_type_hidden)から
+	 * 自分自身までの範囲(入れ子も内側に含む)、それ以外は自分自身 1 枚だけ。
+	 * moveLayerRange と組み合わせてフォルダごと動かすのに使う。
+	 * @param index レイヤ番号
+	 * @return %[ start: // 塊の先頭レイヤ番号
+	 *            count: // 塊の枚数
+	 *          ]  範囲外なら void
+	 */
+	function groupSpan(index);
+
+	/**
+	 * レイヤを同じ階層の隣の兄弟と入れ替える。
+	 * フォルダは区切り+中身をまとめた塊として動き、隣がフォルダならその塊ごと
+	 * 飛び越える。階層をまたぐ移動はしない。
+	 * @param index レイヤ番号
+	 * @param up    true でレイヤパネル表示上ひとつ上(レイヤ一覧では後ろ)へ。
+	 *              既定 true
+	 * @return 移動後のレイヤ番号。端まで来ていて動かせない場合や範囲外は -1
+	 */
+	function moveLayerSibling(index, up=true);
+
+	/**
+	 * レイヤ一覧上の [from, from+count) の範囲をまとめて to の位置へ動かす
+	 * (低水準。フォルダごと動かすなら groupSpan の戻り値を渡す)。
+	 * @param from  移動元先頭レイヤ番号
+	 * @param count 移動する枚数
+	 * @param to    移動先(「取り除く前」のレイヤ一覧でのインデックス)
+	 * @return 成功したら true(引数が不正なら false)
+	 */
+	function moveLayerRange(from, count, to);
 
 	/**
 	 * レイヤを複製する(元の直後に挿入)
@@ -446,20 +484,117 @@ class PSD {
 	/**
 	 * テキストレイヤの runIndex 番目のラン(getLayerInfo().text.runs に対応)の
 	 * スタイルを編集する。style 辞書のうち指定されたキーだけ上書きする。
-	 *   %[ size_px:   // フォントサイズ(px)
-	 *      color:     // RGBA 各 0..1 の配列 [ r, g, b, a ]
+	 *   %[ font:      // フォント名。文書のフォントセットに無ければ追加される
+	 *                 // (getLayerFonts() が返す PostScript 風の名前。表示名では
+	 *                 //  ないことに注意。手元に無い名前は Photoshop 側で代替される)
+	 *      size_px:   // フォントサイズ(px)
+	 *      color:     // RGBA 各 0..1 の配列 [ r, g, b, a ](a 省略で [ r, g, b ] も可)
 	 *      tracking:  // トラッキング(1/1000 em)
 	 *      kerning:   // 手動カーニング
 	 *      bold:      // 疑似ボールド(FauxBold) true/false
 	 *      italic:    // 疑似イタリック(FauxItalic) true/false
 	 *      underline: // 下線(Underline) true/false
 	 *    ]
+	 * 本文とランの長さは変わらない。継承でキーを持たないランには追加される。
 	 * テキストレイヤ以外や runIndex 範囲外の場合は例外。
 	 * @param index    レイヤ番号
 	 * @param runIndex ラン番号
 	 * @param style    スタイル辞書
 	 */
 	function setLayerRunStyle(index, runIndex, style);
+
+	/**
+	 * テキストレイヤの本文とラン構成/段落構成をまとめて差し替える。
+	 * setLayerText はスタイルを先頭ランに畳んでしまうので、本文を変えつつ
+	 * 部分ごとに書式を変えたい場合はこちらを使う。
+	 *
+	 * runs / paragraphs の length は UTF-16 コードユニット数(絵文字等サロゲート
+	 * ペアは 2)。length の合計が本文長と合わない場合は末尾要素が過不足を吸収する
+	 * (伸ばす/切り詰める)。長さ 0 の要素は捨てられる。void や空配列を渡すと
+	 * 単一ラン/単一段落に畳まれる。末尾に改行(\r)が無ければ補われる。
+	 * 各ランのスタイルは「元の先頭ランを雛形にして指定キーだけ上書き」なので、
+	 * 指定しなかった書式は元の見た目のまま残る。
+	 *
+	 * テキストレイヤ以外の場合は例外。
+	 * @param index      レイヤ番号
+	 * @param text       新しい本文(改行は \r)
+	 * @param runs       [ %[ length: // 適用文字数
+	 *                        …setLayerRunStyle の style と同じキー
+	 *                      ],... ]   省略可
+	 * @param paragraphs [ %[ length:        // 段落の文字数
+	 *                        justification: // 行揃え 0=左 1=右 2=中央
+	 *                      ],... ]   省略可
+	 */
+	function setLayerRichText(index, text, runs=void, paragraphs=void);
+
+	/**
+	 * テキストレイヤの段落の行揃えだけを変更する(本文もラン構成も変えない)。
+	 * テキストレイヤ以外や paraIndex 範囲外の場合は例外。
+	 * @param index         レイヤ番号
+	 * @param justification 行揃え 0=左 1=右 2=中央
+	 * @param paraIndex     対象段落番号(getLayerInfo().text.paragraphs に対応)。
+	 *                      負値で全段落。既定 -1
+	 */
+	function setLayerJustification(index, justification, paraIndex=-1);
+
+	/**
+	 * テキストレイヤが持つフォント名の一覧を返す(フォント選択 UI の候補用)。
+	 * setLayerRunStyle / setLayerRichText の font に渡せる名前。
+	 * テキストレイヤ以外の場合は例外。
+	 * @param index レイヤ番号
+	 * @return フォント名の配列
+	 */
+	function getLayerFonts(index);
+
+	/**
+	 * テキストレイヤの配置(アフィン変換)を取得する。
+	 * getLayerInfo().text.transform と同じ値。テキストレイヤ以外は例外。
+	 * @param index レイヤ番号
+	 * @return [ xx, xy, yx, yy, tx, ty ](tx,ty=平行移動)
+	 */
+	function getLayerTextTransform(index);
+
+	/**
+	 * テキストレイヤの配置(アフィン変換)を差し替える。
+	 * 書き換わるのはテキスト情報だけで、レイヤ矩形(焼き込み済みラスタ)は
+	 * 動かない。単純な平行移動には moveTextLayer を使うこと。
+	 * テキストレイヤ以外や要素数不足の場合は例外。
+	 * @param index  レイヤ番号
+	 * @param matrix [ xx, xy, yx, yy, tx, ty ] の 6 要素配列
+	 */
+	function setLayerTextTransform(index, matrix);
+
+	/**
+	 * テキストレイヤを平行移動する。アフィン変換の tx/ty とレイヤ矩形
+	 * (マスク矩形があればそれも)を同じだけずらすので、PSD 内蔵のラスタも
+	 * 一緒に動く。テキストレイヤ以外の場合は例外。
+	 * @param index レイヤ番号
+	 * @param dx    X 移動量(px)
+	 * @param dy    Y 移動量(px)
+	 */
+	function moveTextLayer(index, dx, dy);
+
+	/**
+	 * テキストレイヤの流し込み枠を取得する(アフィン変換のローカル座標。
+	 * 文書上の位置は transform の tx/ty を足したもの)。
+	 * テキストレイヤ以外の場合は例外。
+	 * @param index レイヤ番号
+	 * @return %[ left:, top:, right:, bottom: ]
+	 */
+	function getLayerTextBounds(index);
+
+	/**
+	 * テキストレイヤの流し込み枠を差し替える(アフィン変換のローカル座標)。
+	 * 実際に流し込みが変わるのは段落テキスト(ボックステキスト)のみで、
+	 * ポイントテキストでは Photoshop 側が字形から枠を作り直す。
+	 * テキストレイヤ以外の場合は例外。
+	 * @param index  レイヤ番号
+	 * @param left   左
+	 * @param top    上
+	 * @param right  右
+	 * @param bottom 下
+	 */
+	function setLayerTextBounds(index, left, top, right, bottom);
 
 	/**
 	 * static method
