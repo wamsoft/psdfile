@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-吉里吉里Z (KirikiriZ) 用の PSD 読み込み/編集/書き出しプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 直結の単一リポジトリだったが、2026-06-12 に PSD パース/書き出しコア部分を [wamsoft/psdparse](https://github.com/wamsoft/psdparse) に分離。psdfile は **psdparse を submodule で取り込んで吉里吉里バインドを行う薄いラッパー** の構成になった。読み込みに加え、psdparse v0.7+ の編集機能 (レイヤ構造/画素/マスク/テキスト編集・新規作成・`save`) も公開している (「編集系 API」節)。
+吉里吉里Z (KirikiriZ) 用の PSD 読み込み/編集/書き出しプラグイン `psdfile.dll`。元は Boost.Spirit/Phoenix と `<tp_stub.h>` 直結の単一リポジトリだったが、2026-06-12 に PSD パース/書き出しコア部分を [wamsoft/psdparse](https://github.com/wamsoft/psdparse) に分離。psdfile は **psdparse を submodule で取り込んで吉里吉里バインドを行う薄いラッパー** の構成になった。読み込みに加え、psdparse v0.7+ の編集機能 (レイヤ構造/画素/マスク/テキスト編集・新規作成・`save`) も公開している (「編集系 API」節)。2026-08-18 に **psdparse が Python バインディングにだけ出していた参照系メタデータ / レコード項目編集 / ディスクリプタ編集を吉里吉里側にも移植** して API 対等になった (「参照系メタデータ」「ディスクリプタ編集」節)。
 
 ユーザー向け TJS2 API は `manual.tjs` が正本。`NCB_REGISTER_CLASS(PSD)` の登録内容と齟齬が出ないように維持する。
 
@@ -19,6 +19,8 @@ psdfile/                         ← このリポジトリ
 ├── manual.tjs                   ★ TJS2 API 正本
 ├── psdclass.h                   PSD クラスヘッダ
 ├── psdclass.cpp                 PSD クラス本体 (getLayerData / getBlend / ストレージ等)
+├── psdclass_conv.h              ttstr ⇄ u16str/UTF-8/4CC 変換 (cpp 間共有)
+├── psdclass_meta.cpp            参照系メタデータ + ディスクリプタ ⇄ TJS 橋渡し
 ├── psdclass_loadstream.cpp      iTJSBinaryStream → StreamReader::Source ラッパ
 ├── main.cpp                     PSDStorage (psd:// ストレージ) + NCB 登録
 └── external/
@@ -117,7 +119,15 @@ psdparse v0.8.0 で編集機能一式が入ったのを受け吉里吉里バイ�
 - **画素編集**: `setLayerPixels` / `setLayerMaskPixels` / `addLayer` / `setMergedImage`
   — 吉里吉里 `Layer` の `mainImageBuffer`(BGRA) を `readLayerBGRA()` で tight-pack して
   psdparse に渡す。8bit RGB 文書のみ (psdparse 側制約)。
-- **新規作成 / 保存**: `createBlank(w,h)` / `save(filename)`。save は `TVPGetLocalName`
+- **レコード項目編集 (E1)**: `setLayerOpacity` / `setLayerClipping` / `setLayerVisible` /
+  `setLayerBlendMode`。レイヤレコードは save 時に必ずフィールドから再直列化されるので
+  `layerList[i]` を書くだけ (extra data の `useRawBytes` は触らない)。
+  `setLayerBlendMode` は blend_mode_* 定数と 4CC 文字列 (`"mul "`) の両方を受ける
+  (`tTJSVariant` 引数で分岐)。読み側の `getLayerInfo().blend_mode_key` と対。
+- **ロード / 新規作成 / 保存**: `loadOctet(octet)`(→ `loadFromMemory`。バイト列は
+  psdparse 内部へコピーされるので octet の寿命に依存しない。ファイル名が無いので
+  psd:// 登録はしない) / `clear()`(`clearData` 明示呼び出し) /
+  `createBlank(w,h,mode=color_mode_rgb)` / `save(filename)`。save は `TVPGetLocalName`
   でローカルパス化 → `NarrowString` (fopen ベースの `FileWriter`)。
 - **テキスト編集**: `setLayerText` / `setLayerRunStyle` / `setLayerRichText` /
   `setLayerJustification` / `getLayerFonts`、配置系に `get,setLayerTextTransform` /
@@ -127,15 +137,53 @@ psdparse v0.8.0 で編集機能一式が入ったのを受け吉里吉里バイ�
   現在は「TJS 引数 → `RunStyleEdit`/`TextRunSpec`/`TextParagraphSpec` 変換 +
   `errorOut` の例外化」だけを行う (`readRunStyleEdit` / `throwTextError`)。
 
-補助変換: `tjsToU16`(ttstr→u16str)、`tjsToUtf8`(ttstr→UTF-8。luni 名 / フォント名用)、
-`blendModeToKey`(psd::BlendMode→4CC。`addLayer` 用)。省略引数を持つ
-`addLayer` / `setLayerRichText` / `setLayerJustification` / `moveLayerSibling` は
-ncbind の `RawCallback` で公開している (NCB_METHOD は既定値を扱えないため)。
+補助変換は `psdclass_conv.h` に inline で置いてある (`psdclass.cpp` と
+`psdclass_meta.cpp` の両方から使うため): `u16ToTjs` / `tjsToU16` /
+`tjsToUtf8`(luni 名 / フォント名用) / `fourccToTjs` / `tjsToFourcc`。
+`blendModeToKey`(psd::BlendMode→4CC) は `psdclass.cpp`。省略引数を持つ
+`addLayer` / `setLayerRichText` / `setLayerJustification` / `moveLayerSibling` /
+`createBlank` / `getLayerDescriptor` / `setLayerDescriptor` は ncbind の
+`RawCallback` で公開している (NCB_METHOD は既定値を扱えないため)。
 
 編集後の合成画像 (getBlend の元) は古いままになる (psdparse 側仕様 — Photoshop が
 開いて再合成するまで反映されない)。テキストのラスタも同様で、psdparse は字形を
 再描画しないため `moveTextLayer` / `setLayerTextBounds` 等の結果は Photoshop で
 開き直したときに反映される。
+
+### 参照系メタデータ (`psdclass_meta.cpp`)
+
+psdparse がパース済みで持っているのに `getLayerInfo()` では返していなかった情報を
+出す層。psdparse の Python バインディング (`layer.mask` / `blending_ranges` /
+`sheet_color` / `info_keys` / `effects` / `fill` / `descriptor()` /
+`descriptor_bytes()`、`PSDFile.color_table` / `global_layer_mask` /
+`image_resource*` / `xmp` / `thumbnail`) と同じ内容を TJS の辞書 / 配列 / octet で
+返す。該当データが無いときは **void を返す** (例外にしない)。
+
+- レイヤ単位: `getLayerMask`(矩形 + flags 展開 + density/feather + real mask) /
+  `getLayerBlendingRanges` / `getLayerSheetColor`('lclr') / `getLayerInfoKeys`(4CC 一覧) /
+  `getLayerDescriptor(no,key,skip=-1)` / `getLayerDescriptorBytes` /
+  `getLayerEffects`('lfx2') / `getLayerFill`('SoCo'/'GdFl'/'PtFl')。
+- 文書単位: `getColorTable`(colors は 0xAARRGGBB にパック) / `getGlobalLayerMask` /
+  `getImageResourceIds` / `getImageResource(id)` / `getICCProfile`(1039) /
+  `getEXIF`(1058) / `getXMP`(1060 を UTF-8 デコード) / `getThumbnail`(1036/1033 の
+  28byte ヘッダを解いて `data` に octet)、`merged_alpha` プロパティ。
+- `getLayerInfo()` にも `blend_mode_key`(4CC 文字列) と `parent_index` を追加。
+  `layer_id` は PSD によって未設定 (-1) なので階層は `parent_index` の方が確実。
+
+リソース / 追加レイヤ情報の生バイトは `IteratorBase::clone()` + `init()` で読む
+(元 iterator の読み位置を壊さない = 遅延参照を維持する)。
+
+### ディスクリプタ編集 (`psdclass_meta.cpp`)
+
+`setLayerEffects(index, changes)` / `setLayerDescriptor(index, key, changes, skip=-1)`。
+解析済みの型付き `psd::Descriptor` に部分辞書を重ねて**葉の値だけ**差し替え、
+`psdwrite` の `writeDescriptorBody` で再直列化 → `setAdditionalInfoBytes` で差し替える。
+構造 / classID / 型 / キー順が保たれるので、変更しなければバイト一致。
+
+**辞書を列挙するのではなく「ディスクリプタ側のキーを引きにいく」向きで実装している**
+(`mergeDictIntoDescriptor`)。TJS の Dictionary 列挙は `EnumMembers` + コールバック
+オブジェクトが必要で面倒なうえ、意味論的にも psdparse 側と同じ「既存キーだけ編集し、
+未知キーは無視」になるため。`ncbPropAccessor::checkVariant` で有無を判定する。
 
 psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / VectorReader /
 StreamReader / WriterBase / MemoryWriter / round-trip save / EngineData パース・
@@ -150,7 +198,7 @@ StreamReader / WriterBase / MemoryWriter / round-trip save / EngineData パー�
 
 ## TJS2 API 変更時の手順
 
-1. `psdclass.cpp` で実装変更
+1. `psdclass.cpp` (参照系メタデータ / ディスクリプタ系なら `psdclass_meta.cpp`) で実装変更
 2. `psdclass.cpp` 末尾の `NCB_REGISTER_CLASS(PSD)` で公開
 3. `manual.tjs` に同じシグネチャを追記
 4. ビルド (`make PRESET=x64-windows BUILD_TYPE=Debug build`) で smoke 確認

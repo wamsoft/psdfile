@@ -71,6 +71,22 @@ class PSD {
 	function load(filename);
 
 	/**
+	 * octet に入った PSD データをロードする。
+	 * バイト列は内部バッファへコピーされるので、呼び出し後に octet を破棄しても
+	 * かまわない。ファイル名を持たないため psd:// ストレージへは登録されない。
+	 * @param data PSD ファイル全体を格納した octet
+	 * @return ロードに成功したら true
+	 */
+	function loadOctet(data);
+
+	/**
+	 * 保持しているデータを明示的に破棄する。
+	 * 吉里吉里のオブジェクト寿命は GC 依存なので、大きな PSD を掴んだままに
+	 * したくないときに呼ぶ。以後の参照系は "no data" 例外になる。
+	 */
+	function clear();
+
+	/**
 	 * LayerIDが未設定のレイヤに対してID番号を自動割り付け(base_id+1からlayer_no順に)
 	 * Photoshop互換系のpsd保存ツールではレイヤIDが割り付けられないケースがあるため，psd://~/id/ が正しくロードできない問題がある
 	 * 基本的にはload直後に呼ぶことを推奨
@@ -84,10 +100,12 @@ class PSD {
 	property width { getter; } //< 画像横幅
 	property height { getter; } //< 画像縦幅
 	property channels { getter; } //< チャンネル数
+	property depth { getter; } //< 1チャンネルあたりのビット数(1/8/16/32)
 	property color_mode { getter; } //< カラーモード
 	property layer_count { getter; } //< レイヤ数
 	property hresolution { getter; } //< 水平解像度(dpi, 既定72, image resource 1005)
 	property vresolution { getter; } //< 垂直解像度(dpi, 既定72)
+	property merged_alpha { getter; } //< 合成済み画像にアルファチャンネルが含まれるか
 
 	/**
 	 * レイヤ種別の取得
@@ -115,13 +133,20 @@ class PSD {
 	 * right        右座標
 	 * width        横幅
 	 * height       縦幅
-	 * blend_mode   合成モード
+	 * blend_mode   合成モード(blend_mode_*。未知のモードは blend_mode_invalid)
+	 * blend_mode_key PSD 上の生の合成モードキー(4文字。3文字キーは末尾に空白が付く
+	 *              ことに注意 "mul " 等)。未知モードもそのまま得られるので、
+	 *              読んだ値をそのまま書き戻すなら setLayerBlendMode にこれを渡す
 	 * opacity      不透明度
 	 * fill_opacity 塗りの不透明度
 	 * visible      表示状態
 	 * name         レイヤ名
 	 * layer_id     レイヤID
 	 * group_layer_id 親レイヤID
+	 * parent_index 親フォルダのレイヤ番号(トップレベルは -1)。layer_id は PSD に
+	 *              よっては未設定(-1)なので、階層を組むならこちらが確実。
+	 *              構造編集(deleteLayer/moveLayer/duplicateLayer/addLayer 等)の
+	 *              あとも再計算される
 	 * type         合成モード（吉里吉里の対応モード)
 	 * clipping	クリッピングマスクの対象か？
 	 * mask		レイヤマスクを持っているかどうか？
@@ -287,6 +312,175 @@ class PSD {
 	function getLayerComp();
 
 	// ========================================================================
+	// 参照系メタデータ
+	//
+	// getLayerInfo() には載せていない詳細情報を個別に取り出す口。
+	// 該当データを持たない場合はいずれも void を返す(例外にはしない)。
+	// ========================================================================
+
+	/**
+	 * レイヤマスクの詳細を取得する
+	 * @param no レイヤ番号
+	 * @return %[ top:, left:, bottom:, right:, // マスク矩形
+	 *            width:, height:,
+	 *            default_color:  // マスク領域外の値 0..255
+	 *            flags:          // 生のフラグバイト
+	 *            relative:       // 位置がレイヤ相対か(bit0)
+	 *            disabled:       // マスクが無効か(bit1)
+	 *            inverted:       // 反転(bit2、廃止仕様)
+	 *            from_render:    // 他データのレンダリング由来か(bit3)
+	 *            has_parameters: // density/feather ブロックを持つか(bit4)
+	 *            user_density:   // ユーザーマスク濃度 0..255(無ければキー自体なし)
+	 *            user_feather:   // ユーザーマスクぼかし(px、同上)
+	 *            vector_density: // ベクタマスク濃度(同上)
+	 *            vector_feather: // ベクタマスクぼかし(同上)
+	 *            real: %[        // real/user mask (無ければキー自体なし)
+	 *              flags:, background:,
+	 *              top:, left:, bottom:, right:, // enclosing 矩形
+	 *            ]
+	 *          ]  マスクを持たない場合は void
+	 */
+	function getLayerMask(no);
+
+	/**
+	 * レイヤのブレンド範囲を取得する。source/dest は 32bit の生値で、
+	 * 上下 16bit に黒側/白側の範囲が詰まっている(詳細は PSD 仕様書を参照)。
+	 * @param no レイヤ番号
+	 * @return %[ gray:     %[ source:, dest: ],
+	 *            channels: [ %[ source:, dest: ],... ]
+	 *          ]  ブレンド範囲ブロックが無い場合は void
+	 */
+	function getLayerBlendingRanges(no);
+
+	/**
+	 * レイヤパネルの色ラベル('lclr')を取得する
+	 * @param no レイヤ番号
+	 * @return %[ index: // 0..11
+	 *            name:  // "none" "red" "orange" "yellow" "green" "blue"
+	 *                   // "violet" "gray" "seafoam" "indigo" "magenta" "fuschia"
+	 *          ]  lclr ブロックが無い場合は void
+	 *          (index 0/"none" は「明示的にラベル無し」なので void とは区別される)
+	 */
+	function getLayerSheetColor(no);
+
+	/**
+	 * レイヤが持つ追加レイヤ情報ブロックの 4CC キー一覧を取得する。
+	 * getLayerDescriptor / getLayerDescriptorBytes に渡せるキーの調査用。
+	 * @param no レイヤ番号
+	 * @return キー文字列(4文字)の配列
+	 */
+	function getLayerInfoKeys(no);
+
+	/**
+	 * 追加レイヤ情報ブロックを Photoshop ディスクリプタとして辞書化する。
+	 * 型に応じて以下へ変換される:
+	 *   整数/実数     → 数値
+	 *   真偽         → 1/0
+	 *   文字列       → 文字列
+	 *   UnitFloat    → %[ value:, unit: ]  unit は "points" "millimeters" "angle"
+	 *                                      "density" "distance" "none" "percent"
+	 *                                      "pixels" のいずれか
+	 *   Enumerated   → %[ type:, value: ]
+	 *   List         → 配列
+	 *   Descriptor   → 辞書(入れ子)
+	 *   RawData      → octet
+	 *   Class/Alias  → 文字列
+	 *   Reference    → void
+	 * @param no   レイヤ番号
+	 * @param key  4文字のキー("lfx2" 等)
+	 * @param skip ディスクリプタ本体前のバージョン接頭バイト数。
+	 *             -1 で既知キー(lfx2/SoCo/GdFl/PtFl/SoLd/SoLE/vstk/CgEd/vscg/vogk)
+	 *             は自動判定、それ以外は 0。既定 -1
+	 * @return 辞書。キーが無い・解析できない場合は void
+	 */
+	function getLayerDescriptor(no, key, skip=-1);
+
+	/**
+	 * 追加レイヤ情報ブロックの生バイトを取得する
+	 * @param no  レイヤ番号
+	 * @param key 4文字のキー
+	 * @return octet。キーが無い場合は void
+	 */
+	function getLayerDescriptorBytes(no, key);
+
+	/**
+	 * レイヤ効果('lfx2')のディスクリプタ辞書を取得する。
+	 * ドロップシャドウ/光彩/オーバーレイ/境界線/ベベル等が入れ子の辞書で入る。
+	 * getLayerDescriptor(no, "lfx2") と同じ。
+	 * @param no レイヤ番号
+	 * @return 辞書。効果が無い場合は void
+	 */
+	function getLayerEffects(no);
+
+	/**
+	 * 塗りつぶしレイヤの内容('SoCo'単色/'GdFl'グラデーション/'PtFl'パターン)を
+	 * 取得する
+	 * @param no レイヤ番号
+	 * @return %[ type: // "solid" / "gradient" / "pattern"
+	 *            data: // ディスクリプタ辞書
+	 *          ]  塗りつぶしレイヤでない場合は void
+	 */
+	function getLayerFill(no);
+
+	/**
+	 * カラーテーブル(インデックスカラー文書のパレット)を取得する
+	 * @return %[ valid_count:        // 有効なエントリ数
+	 *            transparency_index: // 透明色インデックス(-1 で無し)
+	 *            colors: [ 0xAARRGGBB, ... ] // 常に 256 エントリ
+	 *          ]  カラーテーブルが無い場合は void
+	 */
+	function getColorTable();
+
+	/**
+	 * global layer mask info(マスク表示用のオーバーレイ色)を取得する
+	 * @return %[ overlay_color_space:,
+	 *            color: [ c1, c2, c3, c4 ],
+	 *            opacity: // 0..100
+	 *            kind:    // 0=反転 / 1=全マスク / 128=レイヤ毎
+	 *          ]  ブロックが空/不在の場合は void
+	 */
+	function getGlobalLayerMask();
+
+	/**
+	 * 文書が持つイメージリソースの ID 一覧を取得する
+	 * @return ID(整数)の配列
+	 */
+	function getImageResourceIds();
+
+	/**
+	 * イメージリソースの生バイトを取得する。デコードは呼び出し側の責任。
+	 * @param id リソースID(1039=ICCプロファイル, 1058=EXIF, 1060=XMP,
+	 *           1036/1033=サムネイル, 1005=解像度, 1032=グリッド/ガイド 等)
+	 * @return octet。該当リソースが無い場合は void
+	 */
+	function getImageResource(id);
+
+	/** ICC プロファイル(リソース 1039)の生バイト。無ければ void */
+	function getICCProfile();
+
+	/** EXIF(リソース 1058)の生バイト。無ければ void */
+	function getEXIF();
+
+	/**
+	 * XMP パケット(リソース 1060)を文字列で取得する。中身は UTF-8 の XML。
+	 * 不正な UTF-8 が入っている可能性を考えるなら getImageResource(1060) で
+	 * 生バイトを取ること。
+	 * @return 文字列。無ければ void
+	 */
+	function getXMP();
+
+	/**
+	 * 埋め込みサムネイルを取得する(リソース 1036=RGB順 / 旧 1033=BGR順)
+	 * @return %[ format:      // "jpeg"(JFIF JPEG) または "raw"
+	 *            width:, height:,
+	 *            bits:        // 1ピクセルあたりのビット数
+	 *            resource_id: // 1036 または 1033
+	 *            data:        // ペイロードの octet(28バイトのヘッダを除いたもの)
+	 *          ]  サムネイルが無い場合は void
+	 */
+	function getThumbnail();
+
+	// ========================================================================
 	// 編集系 API (psdparse v0.7+ の編集機能。psdfile.dll から利用可能)
 	//
 	// いずれも in-memory の内容を操作するだけで、実際のバイト列は save() 時に
@@ -306,13 +500,18 @@ class PSD {
 	function save(filename);
 
 	/**
-	 * この PSD を空の 8bit RGB 文書(白の合成画像)として初期化する。
+	 * この PSD を空の 8bit 文書(白の合成画像)として初期化する。
 	 * 以後 addLayer(...) でレイヤを足して save() できる。
 	 * @param width  幅
 	 * @param height 高さ
+	 * @param mode   カラーモード(color_mode_*、既定 color_mode_rgb)。
+	 *               **現状 color_mode_rgb 以外は false を返します**
+	 *               (新規作成に対応しているのは 8bit RGB のみ)。
+	 *               画素編集系(addLayer/setLayerPixels/setMergedImage)も同様に
+	 *               8bit RGB 文書のみ対応です
 	 * @return 成功したら true
 	 */
-	function createBlank(width, height);
+	function createBlank(width, height, mode=color_mode_rgb);
 
 	/**
 	 * レイヤを 1 枚削除する
@@ -395,6 +594,69 @@ class PSD {
 	 * @return 成功したら true
 	 */
 	function setFillOpacity(index, opacity);
+
+	/**
+	 * 不透明度を編集する
+	 * @param index   レイヤ番号
+	 * @param opacity 0..255(範囲外はクランプされる)
+	 * @return 成功したら true(範囲外のレイヤ番号で false)
+	 */
+	function setLayerOpacity(index, opacity);
+
+	/**
+	 * クリッピングマスクの対象かどうかを編集する
+	 * @param index    レイヤ番号
+	 * @param clipping 0=base / 1=non-base(クリッピング対象)
+	 * @return 成功したら true
+	 */
+	function setLayerClipping(index, clipping);
+
+	/**
+	 * 表示状態を編集する
+	 * @param index   レイヤ番号
+	 * @param visible 表示するか
+	 * @return 成功したら true
+	 */
+	function setLayerVisible(index, visible);
+
+	/**
+	 * 合成モードを編集する
+	 * @param index レイヤ番号
+	 * @param mode  blend_mode_* 定数、または PSD 上の生のキー文字列(4文字。
+	 *              "norm" "mul " "scrn" など。3文字キーは末尾の空白が必須)。
+	 *              getLayerInfo().blend_mode_key の値をそのまま渡せる
+	 * @return 成功したら true
+	 */
+	function setLayerBlendMode(index, mode);
+
+	/**
+	 * レイヤ効果('lfx2')の値を編集する。
+	 * changes は getLayerEffects() と同じ形の「部分辞書」で、指定した葉の値だけが
+	 * 上書きされる。構造/クラスID/型/キー順はそのまま保たれ、指定しなかった項目や
+	 * ディスクリプタ側に存在しないキーは無視される(そのためバイト一致が保たれる)。
+	 * 値の与え方:
+	 *   数値/文字列/真偽 → そのまま
+	 *   UnitFloat        → %[ value: ] か生の数値(単位は変更しない)
+	 *   Enumerated       → %[ type:, value: ] か値だけの文字列
+	 *   List             → 配列(先頭から既存要素数までを順に上書き)
+	 *   Descriptor       → 辞書(入れ子でマージ)
+	 * lfx2 ブロックを持たないレイヤの場合は例外。
+	 * @param index   レイヤ番号
+	 * @param changes 部分辞書
+	 */
+	function setLayerEffects(index, changes);
+
+	/**
+	 * 任意の追加レイヤ情報キーに対する setLayerEffects の一般版
+	 * (塗りつぶしレイヤの 'SoCo'/'GdFl'/'PtFl' 等)。
+	 * 該当キーを持たないレイヤの場合は例外。
+	 * @param index   レイヤ番号
+	 * @param key     4文字のキー
+	 * @param changes 部分辞書
+	 * @param skip    ディスクリプタ本体前のバージョン接頭バイト数
+	 *                (-1 で既知キーは自動判定。既定 -1)
+	 */
+	function setLayerDescriptor(index, key, changes, skip=-1);
 
 	/**
 	 * マスク無効フラグを編集する(マスクを持つレイヤのみ)

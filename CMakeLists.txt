@@ -30,6 +30,7 @@ krkrz_plugin(psdfile
     SOURCES
         psdclass.cpp
         psdclass_loadstream.cpp
+        psdclass_meta.cpp
         main.cpp
         LicensesGen.cpp
     LIBRARIES

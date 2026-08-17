@@ -45,6 +45,23 @@ public:
 	 */
 	bool load(ttstr filename);
 
+	/**
+	 * octet に入った PSD データをロードする (psdparse の loadFromMemory)。
+	 * バイト列は psdparse 側の内部バッファへコピーされるので、呼び出し後に
+	 * octet を破棄しても問題ない。ファイル名を持たないので psd:// ストレージ
+	 * への登録は行わない。
+	 * @param data PSD ファイル全体を格納した octet
+	 * @return ロードに成功したら true
+	 */
+	bool loadOctet(tTJSVariant data);
+
+	/**
+	 * 保持しているデータを明示的に破棄する。
+	 * 吉里吉里側のオブジェクト寿命は GC 依存なので、大きな PSD を掴んだままに
+	 * したくないときに呼ぶ。以後 isLoaded 相当の参照系は "no data" 例外になる。
+	 */
+	void clear() { clearData(); }
+
 	static void clearStorageCache();
 	
 #define INTGETTER(tag) int get_ ## tag(){ return isLoaded ? header.tag : -1; }
@@ -59,6 +76,9 @@ public:
   // 解像度 (image resource 1005)。既定 72dpi。未ロードは 0。
   double get_hresolution() { return isLoaded ? header.hres : 0.0; }
   double get_vresolution() { return isLoaded ? header.vres : 0.0; }
+
+  // 合成済み画像にアルファチャンネルが含まれるか。未ロードは false。
+  bool get_merged_alpha() { return isLoaded ? mergedAlpha : false; }
 
 public:
 	/**
@@ -139,6 +159,124 @@ public:
 	 */
 	tTJSVariant getLayerComp();
 
+	// ------------------------------------------------------------
+	// 参照系メタデータ (psdclass_meta.cpp)
+	//
+	// psdparse がパース済みで保持しているが getLayerInfo では返していない
+	// 情報を取り出す口。psdparse の Python バインディングにある
+	// layer.mask / blending_ranges / sheet_color / info_keys / effects /
+	// fill / descriptor() / 文書レベルのリソース群に対応する。
+	// ------------------------------------------------------------
+
+	/**
+	 * レイヤマスクの詳細
+	 * @param no レイヤ番号
+	 * @return %[ top, left, bottom, right, width, height, default_color, flags,
+	 *            relative, disabled, inverted, from_render, has_parameters,
+	 *            user_density, user_feather, vector_density, vector_feather,
+	 *            real:%[ flags, background, top, left, bottom, right ] ]
+	 *         マスクを持たない場合は void
+	 */
+	tTJSVariant getLayerMask(int no);
+
+	/**
+	 * レイヤのブレンド範囲
+	 * @param no レイヤ番号
+	 * @return %[ gray:%[ source, dest ], channels:[ %[ source, dest ], ... ] ]
+	 *         ブレンド範囲ブロックがない場合は void
+	 *         source/dest は 32bit の生値 (上下 16bit に黒/白の範囲が入る)
+	 */
+	tTJSVariant getLayerBlendingRanges(int no);
+
+	/**
+	 * レイヤパネルの色ラベル ('lclr')
+	 * @param no レイヤ番号
+	 * @return %[ index, name ] (0/"none" 〜 11/"fuschia")。lclr が無ければ void
+	 */
+	tTJSVariant getLayerSheetColor(int no);
+
+	/**
+	 * レイヤが持つ追加レイヤ情報ブロックの 4CC キー一覧
+	 * @param no レイヤ番号
+	 * @return キー文字列 (4 文字) の配列
+	 */
+	tTJSVariant getLayerInfoKeys(int no);
+
+	/**
+	 * 追加レイヤ情報ブロックを Photoshop ディスクリプタとして辞書化する
+	 * @param no レイヤ番号
+	 * @param key 4 文字のキー ("lfx2" 等)
+	 * @param skip ディスクリプタ本体前のバージョン接頭バイト数 (-1 で既知キーは自動)
+	 * @return ネストした辞書 / 配列。キーが無い・解析不能なら void
+	 */
+	tTJSVariant getLayerDescriptor(int no, ttstr key, int skip);
+
+	/**
+	 * 追加レイヤ情報ブロックの生バイト
+	 * @param no レイヤ番号
+	 * @param key 4 文字のキー
+	 * @return octet。キーが無ければ void
+	 */
+	tTJSVariant getLayerDescriptorBytes(int no, ttstr key);
+
+	/**
+	 * レイヤ効果 ('lfx2') のディスクリプタ辞書。効果が無ければ void
+	 * @param no レイヤ番号
+	 */
+	tTJSVariant getLayerEffects(int no);
+
+	/**
+	 * 塗りつぶしレイヤの内容 ('SoCo'/'GdFl'/'PtFl')
+	 * @param no レイヤ番号
+	 * @return %[ type:"solid"|"gradient"|"pattern", data:%[ ... ] ]。無ければ void
+	 */
+	tTJSVariant getLayerFill(int no);
+
+	/**
+	 * カラーテーブル (インデックスカラー文書)
+	 * @return %[ valid_count, transparency_index, colors:[ 0xAARRGGBB, ... ] ]
+	 *         カラーテーブルが無ければ void
+	 */
+	tTJSVariant getColorTable();
+
+	/**
+	 * global layer mask info (マスク表示用のオーバーレイ色)
+	 * @return %[ overlay_color_space, color:[c1,c2,c3,c4], opacity, kind ]
+	 *         ブロックが空/不在なら void
+	 */
+	tTJSVariant getGlobalLayerMask();
+
+	/**
+	 * 文書が持つイメージリソースの ID 一覧
+	 * @return ID (整数) の配列
+	 */
+	tTJSVariant getImageResourceIds();
+
+	/**
+	 * イメージリソースの生バイト
+	 * @param id リソース ID (1039=ICC, 1058=EXIF, 1060=XMP, 1036/1033=サムネイル)
+	 * @return octet。該当リソースが無ければ void
+	 */
+	tTJSVariant getImageResource(int id);
+
+	/** ICC プロファイル (リソース 1039) の生バイト。無ければ void */
+	tTJSVariant getICCProfile() { return getImageResource(1039); }
+	/** EXIF (リソース 1058) の生バイト。無ければ void */
+	tTJSVariant getEXIF()       { return getImageResource(1058); }
+
+	/**
+	 * XMP パケット (リソース 1060)。UTF-8 XML を文字列にして返す
+	 * @return 文字列。無ければ void
+	 */
+	tTJSVariant getXMP();
+
+	/**
+	 * 埋め込みサムネイル (リソース 1036=RGB / 旧 1033=BGR)
+	 * @return %[ format:"jpeg"|"raw", width, height, bits, resource_id,
+	 *            data:<octet> ]。無ければ void
+	 */
+	tTJSVariant getThumbnail();
+
 	/**
 	 * LayerIDが未設定のレイヤに対してID番号を自動割り付け(base_id+1からlayer_no順に)
 	 * @param base_id 割り付けID最小番号-1(※既存の全てのレイヤIDがこれより大きかったらその値が利用される)
@@ -164,11 +302,14 @@ public:
 	bool save(ttstr filename);
 
 	/**
-	 * この PSD を空の 8bit RGB 文書 (白の合成画像) として初期化する。
+	 * この PSD を空の 8bit 文書 (白の合成画像) として初期化する。
 	 * 以後 addLayer(...) でレイヤを足して save() できる。
+	 * @param mode カラーモード (color_mode_* 定数。既定は color_mode_rgb)。
+	 *             psdparse 側が新規作成に対応しているのは 8bit RGB のみで、
+	 *             それ以外を渡すと false が返る。
 	 * @return 成功したら true
 	 */
-	bool createBlank(int width, int height);
+	bool createBlank(int width, int height, int mode);
 
 	/** レイヤを 1 枚削除。範囲外で false。 */
 	bool deleteLayer(int index);
@@ -191,6 +332,33 @@ public:
 	bool setLayerName(int index, ttstr name);
 	/** 塗り不透明度 (0..255) の編集。失敗で false。 */
 	bool setFillOpacity(int index, int opacity);
+
+	// --- レイヤレコード項目の編集 -------------------------------------------
+	// いずれも layerList のフィールドを書き換えるだけ。レイヤレコードは save()
+	// 時に必ずフィールドから再直列化されるので追加のフラグ操作は要らない。
+	// 範囲外の index で false。
+
+	/** 不透明度 (0..255) の編集。 */
+	bool setLayerOpacity(int index, int opacity);
+	/** クリッピング (0=base / 1=non-base) の編集。 */
+	bool setLayerClipping(int index, int clipping);
+	/** 可視フラグの編集 (flag bit1 の反転)。 */
+	bool setLayerVisible(int index, bool visible);
+	/** 合成モードの編集。mode は blend_mode_* 定数、または 4 文字のキー
+	 *  ("mul " 等、3 文字キーの末尾スペースに注意)。 */
+	bool setLayerBlendMode(int index, tTJSVariant mode);
+
+	// --- ディスクリプタ編集 (psdclass_meta.cpp) ------------------------------
+	// 解析済みの型付きディスクリプタに部分辞書を重ねて、葉の値だけ差し替える。
+	// 構造 / classID / 型 / キー順は保たれるので、変更しなければバイト一致。
+	// 失敗時は例外。
+
+	/** レイヤ効果 ('lfx2') の値を編集する。changes は getLayerEffects と同じ形の
+	 *  部分辞書 (存在する葉だけ上書き。未知キーは無視)。 */
+	void setLayerEffects(int index, tTJSVariant changes);
+	/** 任意の追加レイヤ情報キーに対する setLayerEffects の一般版。
+	 *  skip はディスクリプタ本体前のバージョン接頭バイト数 (-1 で既知キーは自動)。 */
+	void setLayerDescriptor(int index, ttstr key, tTJSVariant changes, int skip);
 	/** マスク無効フラグの編集 (マスクを持つレイヤのみ)。 */
 	bool setMaskDisabled(int index, bool disabled);
 	/** ユーザーマスク濃度 (0..255) の編集。 */

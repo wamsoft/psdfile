@@ -1,64 +1,15 @@
 #include <ncbind.hpp>
 #include "psdclass.h"
+#include "psdclass_conv.h"
 #include "psdengine.h"  // 編集系: RunStyleEdit / TextRunSpec / TextParagraphSpec
 #include <vector>
 #include <string>
 
 #define BMPEXT TJS_W(".bmp")
 
-// psdparse の Unicode 文字列 (std::u16string = UTF-16 host-order) を ttstr に
-// 変換。Windows では tjs_char == char16_t (どちらも 16bit UTF-16 code unit)
-// なので bit-level reinterpret で問題ない。length 指定で embedded NUL も保存。
-static inline ttstr u16ToTjs(const psd::u16str &s) {
-	static_assert(sizeof(tjs_char) == sizeof(char16_t),
-	              "tjs_char must be 16-bit UTF-16 code unit");
-	return ttstr(reinterpret_cast<const tjs_char *>(s.data()),
-	             (tjs_int)s.length());
-}
-
-// ttstr (UTF-16 host-order) を psd::u16str に変換。tjs_char == char16_t 前提。
-static inline psd::u16str tjsToU16(const ttstr &s) {
-	return psd::u16str(reinterpret_cast<const char16_t *>(s.c_str()),
-	                   (size_t)s.length());
-}
-
-// ttstr (UTF-16) を UTF-8 (std::string) に変換。psdparse の setLayerName /
-// addLayer は UTF-8 名を受け取り内部で luni に再変換するため。
-static std::string tjsToUtf8(const ttstr &s) {
-	std::string out;
-	const tjs_char *p = s.c_str();
-	tjs_int n = s.length();
-	for (tjs_int i = 0; i < n; i++) {
-		uint32_t cp = (uint16_t)p[i];
-		if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < n) {
-			uint32_t lo = (uint16_t)p[i + 1];
-			if (lo >= 0xdc00 && lo <= 0xdfff) {
-				cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
-				i++;
-			}
-		}
-		if (cp < 0x80) {
-			out.push_back((char)cp);
-		} else if (cp < 0x800) {
-			out.push_back((char)(0xc0 | (cp >> 6)));
-			out.push_back((char)(0x80 | (cp & 0x3f)));
-		} else if (cp < 0x10000) {
-			out.push_back((char)(0xe0 | (cp >> 12)));
-			out.push_back((char)(0x80 | ((cp >> 6) & 0x3f)));
-			out.push_back((char)(0x80 | (cp & 0x3f)));
-		} else {
-			out.push_back((char)(0xf0 | (cp >> 18)));
-			out.push_back((char)(0x80 | ((cp >> 12) & 0x3f)));
-			out.push_back((char)(0x80 | ((cp >> 6) & 0x3f)));
-			out.push_back((char)(0x80 | (cp & 0x3f)));
-		}
-	}
-	return out;
-}
-
 // psd::BlendMode enum を PSD の 4CC blendModeKey へ変換 (addLayer 用)。
 // blendKeyToMode の逆写像。未知は 'norm'。
-static int blendModeToKey(int mode) {
+int blendModeToKey(int mode) {
 	switch ((psd::BlendMode)mode) {
 	case psd::BLEND_MODE_NORMAL:        return 'norm';
 	case psd::BLEND_MODE_DISSOLVE:      return 'diss';
@@ -245,6 +196,24 @@ PSD::load(ttstr filename)
 	return isLoaded;
 }
 
+/**
+ * octet に入った PSD データのロード
+ * @param data PSD ファイル全体を格納した octet
+ * @return ロードに成功したら true
+ */
+bool
+PSD::loadOctet(tTJSVariant data)
+{
+	if (data.Type() != tvtOctet) TVPThrowExceptionMessage(TJS_W("not octet"));
+	tTJSVariantOctet *oct = data.AsOctetNoAddRef();
+	if (!oct) return false;
+	// loadFromMemory はバイト列を psdparse 内部の vector へコピーするので、
+	// octet の寿命に依存しない (mmap / iTJSBinaryStream 経路とは違う)。
+	// loadFromMemory の先頭で clearData() (virtual → PSD::clearData) が走るので
+	// 旧ストレージ登録もそこで外れる。ファイル名が無いので再登録はしない。
+	return loadFromMemory(oct->GetData(), (size_t)oct->GetLength());
+}
+
 void
 PSD::clearData()
 {
@@ -367,6 +336,10 @@ PSD::getLayerInfo(int no)
 		dict.SetValue(TJS_W("type"),       convBlendMode(lay.blendMode));
 		dict.SetValue(TJS_W("layer_type"), lay.layerType);
 		dict.SetValue(TJS_W("blend_mode"), lay.blendMode);
+		// PSD 上の生の合成モードキー (4 文字。'mul ' のように末尾スペースあり)。
+		// blend_mode は psdparse の enum で、未知モードは -1 に落ちるので、
+		// そのまま書き戻したいときはこちらを setLayerBlendMode へ渡す。
+		dict.SetValue(TJS_W("blend_mode_key"), fourccToTjs(lay.blendModeKey));
 		dict.SetValue(TJS_W("visible"),    lay.isVisible());
 		dict.SetValue(TJS_W("name"),       layname(lay));
 
@@ -419,6 +392,11 @@ PSD::getLayerInfo(int no)
 		// group layer はスクリプト側では layer_id 参照で引くようにする
 		if (lay.parent != NULL)
 			dict.SetValue(TJS_W("group_layer_id"), lay.parent->layerId);
+		// 親フォルダのレイヤ番号 (トップレベルは -1)。layer_id は PSD によっては
+		// 未設定 (-1) のことがあるので、階層を組むならこちらが確実。構造編集
+		// (deleteLayer / moveLayer / duplicateLayer / addLayer 等) の後も
+		// psdparse 側で再計算される。
+		dict.SetValue(TJS_W("parent_index"), lay.parentIndex);
 
 		// テキストレイヤ情報 ('TySh' 由来)。layer_type==TEXT のとき present。
 		// 非テキストレイヤでは "text" キー自体を設定しない (void 扱い)。
@@ -1123,11 +1101,11 @@ PSD::save(ttstr filename)
 }
 
 bool
-PSD::createBlank(int width, int height)
+PSD::createBlank(int width, int height, int mode)
 {
 	removeFromStorage();
 	invalidateStorageCache();
-	return psd::PSDFile::createBlank(width, height);
+	return psd::PSDFile::createBlank(width, height, mode);
 }
 
 bool
@@ -1207,6 +1185,54 @@ PSD::setLayerName(int index, ttstr name)
 }
 
 bool PSD::setFillOpacity(int index, int opacity)   { return psd::PSDFile::setFillOpacity(index, opacity); }
+
+// --- レイヤレコード項目の編集 (E1) ------------------------------------------
+// レイヤレコード (opacity / clipping / flag / blendModeKey) は save() 時に必ず
+// フィールドから再直列化されるので、値を書くだけでよい (extra data 側の
+// useRawBytes は触らない)。
+
+bool
+PSD::setLayerOpacity(int index, int opacity)
+{
+	if (index < 0 || index >= (int)layerList.size()) return false;
+	layerList[index].opacity = opacity < 0 ? 0 : (opacity > 255 ? 255 : opacity);
+	return true;
+}
+
+bool
+PSD::setLayerClipping(int index, int clipping)
+{
+	if (index < 0 || index >= (int)layerList.size()) return false;
+	layerList[index].clipping = clipping ? 1 : 0;
+	return true;
+}
+
+bool
+PSD::setLayerVisible(int index, bool visible)
+{
+	if (index < 0 || index >= (int)layerList.size()) return false;
+	// flag bit1 は「隠す」ビットなので可視なら落とす。
+	if (visible) layerList[index].flag &= ~(1 << 1);
+	else         layerList[index].flag |=  (1 << 1);
+	return true;
+}
+
+bool
+PSD::setLayerBlendMode(int index, tTJSVariant mode)
+{
+	if (index < 0 || index >= (int)layerList.size()) return false;
+	int key;
+	if (mode.Type() == tvtString) {
+		// 4 文字の生キー指定 ("mul " 等)。未知キーでも PSD にはそのまま入る。
+		key = tjsToFourcc(ttstr(mode));
+	} else {
+		// blend_mode_* 定数指定。
+		key = blendModeToKey((int)(tjs_int)mode);
+	}
+	layerList[index].blendModeKey = key;
+	layerList[index].blendMode    = psd::blendKeyToMode(key);
+	return true;
+}
 bool PSD::setMaskDisabled(int index, bool disabled){ return psd::PSDFile::setMaskDisabled(index, disabled); }
 bool PSD::setMaskDensity(int index, int density)   { return psd::PSDFile::setMaskDensity(index, density); }
 bool PSD::setMaskFeather(int index, double feather){ return psd::PSDFile::setMaskFeather(index, feather); }
@@ -1514,6 +1540,42 @@ static tjs_error MoveLayerSibling(tTJSVariant *r, tjs_int numparams, tTJSVariant
 	return TJS_S_OK;
 }
 
+// createBlank(width, height, mode=color_mode_rgb) の省略引数用 RawCallback。
+static tjs_error CreateBlank(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	int width  = (tjs_int)*params[0];
+	int height = (tjs_int)*params[1];
+	int mode   = numparams > 2 ? (tjs_int)*params[2] : (int)psd::COLOR_MODE_RGB;
+	bool ok = instance->createBlank(width, height, mode);
+	if (r) *r = ok;
+	return TJS_S_OK;
+}
+
+// getLayerDescriptor(no, key, skip=-1) の省略引数用 RawCallback。
+static tjs_error GetLayerDescriptor(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	int   no   = (tjs_int)*params[0];
+	ttstr key  = *params[1];
+	int   skip = numparams > 2 ? (tjs_int)*params[2] : -1;
+	tTJSVariant v = instance->getLayerDescriptor(no, key, skip);
+	if (r) *r = v;
+	return TJS_S_OK;
+}
+
+// setLayerDescriptor(index, key, changes, skip=-1) の省略引数用 RawCallback。
+static tjs_error SetLayerDescriptor(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 3) return TJS_E_BADPARAMCOUNT;
+	int   index = (tjs_int)*params[0];
+	ttstr key   = *params[1];
+	tTJSVariant changes = *params[2];
+	int   skip  = numparams > 3 ? (tjs_int)*params[3] : -1;
+	instance->setLayerDescriptor(index, key, changes, skip);
+	return TJS_S_OK;
+}
+
 NCB_REGISTER_CLASS(PSD) {
 
 	Factory(&ClassT::factory);
@@ -1568,6 +1630,8 @@ NCB_REGISTER_CLASS(PSD) {
   Variant("layer_type_text",                (int)psd::LAYER_TYPE_TEXT);
 
 	NCB_METHOD(load);
+	NCB_METHOD(loadOctet);
+	NCB_METHOD(clear);
 
 #define INTPROP(name) Property(TJS_W(# name), &Class::get_ ## name, (int)0)
 
@@ -1580,6 +1644,7 @@ NCB_REGISTER_CLASS(PSD) {
 
 	Property(TJS_W("hresolution"), &Class::get_hresolution, (int)0);
 	Property(TJS_W("vresolution"), &Class::get_vresolution, (int)0);
+	Property(TJS_W("merged_alpha"), &Class::get_merged_alpha, (int)0);
 
 	NCB_METHOD(getLayerType);
 	NCB_METHOD(getLayerName);
@@ -1593,13 +1658,31 @@ NCB_REGISTER_CLASS(PSD) {
 	NCB_METHOD(getBlend);
   NCB_METHOD(getLayerComp);
 
+	// --- 参照系メタデータ (psdclass_meta.cpp) ---
+	NCB_METHOD(getLayerMask);
+	NCB_METHOD(getLayerBlendingRanges);
+	NCB_METHOD(getLayerSheetColor);
+	NCB_METHOD(getLayerInfoKeys);
+	RawCallback("getLayerDescriptor", &GetLayerDescriptor, 0);
+	NCB_METHOD(getLayerDescriptorBytes);
+	NCB_METHOD(getLayerEffects);
+	NCB_METHOD(getLayerFill);
+	NCB_METHOD(getColorTable);
+	NCB_METHOD(getGlobalLayerMask);
+	NCB_METHOD(getImageResourceIds);
+	NCB_METHOD(getImageResource);
+	NCB_METHOD(getICCProfile);
+	NCB_METHOD(getEXIF);
+	NCB_METHOD(getXMP);
+	NCB_METHOD(getThumbnail);
+
   NCB_METHOD(clearStorageCache);
 
 	RawCallback("assignAutoIds", &AssignAutoIds, 0);
 
 	// --- 編集系 API ---
 	NCB_METHOD(save);
-	NCB_METHOD(createBlank);
+	RawCallback("createBlank", &CreateBlank, 0);
 	NCB_METHOD(deleteLayer);
 	NCB_METHOD(moveLayer);
 	NCB_METHOD(groupSpan);
@@ -1609,6 +1692,12 @@ NCB_REGISTER_CLASS(PSD) {
 	NCB_METHOD(copyLayerFrom);
 	NCB_METHOD(setLayerName);
 	NCB_METHOD(setFillOpacity);
+	NCB_METHOD(setLayerOpacity);
+	NCB_METHOD(setLayerClipping);
+	NCB_METHOD(setLayerVisible);
+	NCB_METHOD(setLayerBlendMode);
+	NCB_METHOD(setLayerEffects);
+	RawCallback("setLayerDescriptor", &SetLayerDescriptor, 0);
 	NCB_METHOD(setMaskDisabled);
 	NCB_METHOD(setMaskDensity);
 	NCB_METHOD(setMaskFeather);
