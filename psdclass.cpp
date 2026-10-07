@@ -2,6 +2,7 @@
 #include "psdclass.h"
 #include "psdclass_conv.h"
 #include "psdengine.h"  // 編集系: RunStyleEdit / TextRunSpec / TextParagraphSpec
+#include "psdfx.h"      // 並列処理のスレッド数
 #include <vector>
 #include <string>
 
@@ -1582,6 +1583,18 @@ static tjs_error TJS_INTF_METHOD PsdFlattenPath(tTJSVariant *r, tjs_int numparam
 	return TJS_S_OK;
 }
 
+// PSD.setThreads(count) / PSD.getThreads() (static): 描画系の並列処理のスレッド数
+static tjs_error TJS_INTF_METHOD PsdSetThreads(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *) {
+	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
+	psdfx_set_threads((int)(tjs_int)*params[0]);
+	if (r) r->Clear();
+	return TJS_S_OK;
+}
+static tjs_error TJS_INTF_METHOD PsdGetThreads(tTJSVariant *r, tjs_int, tTJSVariant **, iTJSDispatch2 *) {
+	if (r) *r = (tjs_int)psdfx_get_threads();
+	return TJS_S_OK;
+}
+
 // PSD.rasterizePath(layer, path, width, height, left=0, top=0) (static)
 static tjs_error TJS_INTF_METHOD PsdRasterizePath(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *) {
 	if (numparams < 4) return TJS_E_BADPARAMCOUNT;
@@ -1788,5 +1801,7 @@ NCB_REGISTER_CLASS(PSD) {
 	RawCallback("flattenPath", &PsdFlattenPath, TJS_STATICMEMBER);
 	RawCallback("rasterizePath", &PsdRasterizePath, TJS_STATICMEMBER);
 	RawCallback("strokePath", &PsdStrokePath, TJS_STATICMEMBER);
+	RawCallback("setThreads", &PsdSetThreads, TJS_STATICMEMBER);
+	RawCallback("getThreads", &PsdGetThreads, TJS_STATICMEMBER);
 };
 

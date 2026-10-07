@@ -981,4 +981,20 @@ class PSD {
 	 *               inside / outside は閉じたサブパスの片側にだけ線幅ぶん描く
 	 */
 	function strokePath(layer, path, width, height, style=void);
+
+	/**
+	 * static method
+	 * 描画系 (getComposite / renderLayer / ラスタライズ) の並列処理のスレッド数。
+	 * 大きな画像は行ごとに複数のスレッドへ分けて処理する (結果はスレッド数によらない)。
+	 * 主な描画モードの合成は、AVX2 の CPU なら 8 画素ずつの SIMD 版で処理する。
+	 * @param count 使うスレッド数 (呼び出し元を含む)。0 = 自動 (論理コア数、最大 16)、
+	 *              1 = 分けない。プラグインの登録解除のときに作業スレッドは止める
+	 */
+	function setThreads(count);
+
+	/**
+	 * static method
+	 * @return 描画系が実際に使うスレッド数
+	 */
+	function getThreads();
 };

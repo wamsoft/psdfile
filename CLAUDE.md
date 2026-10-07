@@ -207,6 +207,10 @@ psdparse の `compositeImage` / `renderLayer` / `shapeMask` と、描画ライ�
 - static の RawCallback は Win32 GDI の `FlattenPath` / `StrokePath` と名前がぶつかる
   ので `Psd` 接頭辞を付けている。
 - ディスクリプタの辞書化は `psdclass_meta.cpp` の `psdDescriptorToTjs` を共有する。
+- psdparse (psdfx) は大きな画像を作業スレッドに分けて処理する。static の `setThreads` /
+  `getThreads` で数を指定でき、`main.cpp` の `stopRenderThreads` (登録解除時) で
+  `psdfx_shutdown_threads` を呼んで止める。DLL を外す後始末の中でスレッドの終わりを
+  待つと止まることがあるので、この呼び出しは消さないこと。
 
 ## 行儀よく避ける改変
 

@@ -1,6 +1,7 @@
 #include <ncbind.hpp>
 
 #include "psdclass.h"
+#include "psdfx.h"
 
 // -----------------------------------------------------------------------------
 // ストレージ機能
@@ -280,3 +281,11 @@ extern void RegisterPsdfileLicenses();
 NCB_PRE_REGIST_CALLBACK(RegisterPsdfileLicenses);
 
 NCB_POST_UNREGIST_CALLBACK(doneStorage);
+
+// psdparse (psdfx) の作業スレッドを止める。DLL を外す後始末の中でスレッドの終わりを
+// 待つと止まることがあるので、プラグインの登録解除のときに止めておく
+static void stopRenderThreads()
+{
+	psdfx_shutdown_threads();
+}
+NCB_POST_UNREGIST_CALLBACK(stopRenderThreads);
