@@ -262,6 +262,11 @@ static void mergeVariantIntoItem(psd::DescriptorItem *item, tTJSVariant val)
 
 } // namespace
 
+tTJSVariant psdDescriptorToTjs(psd::Descriptor *d)
+{
+	return d ? descToTjs(d) : tTJSVariant();
+}
+
 // ============================================================================
 // レイヤ単位の参照系
 // ============================================================================

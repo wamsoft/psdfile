@@ -82,4 +82,8 @@ static inline int tjsToFourcc(const ttstr &s) {
 	     | ((int)(tjs_uint8)p[2] <<  8) |  (int)(tjs_uint8)p[3];
 }
 
+// ディスクリプタを TJS の辞書へ (psdclass_meta.cpp)
+namespace psd { struct Descriptor; }
+tTJSVariant psdDescriptorToTjs(psd::Descriptor *d);
+
 #endif

@@ -1540,6 +1540,67 @@ static tjs_error MoveLayerSibling(tTJSVariant *r, tjs_int numparams, tTJSVariant
 	return TJS_S_OK;
 }
 
+// --- 描画系 (psdclass_render.cpp) の省略引数用 RawCallback ---
+
+// getComposite(layer, effects=true, background=void)
+static tjs_error GetComposite(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
+	bool effects = numparams > 1 && params[1]->Type() != tvtVoid ? ((tjs_int)*params[1] != 0) : true;
+	tTJSVariant bg = numparams > 2 ? *params[2] : tTJSVariant();
+	tTJSVariant st = instance->getComposite(*params[0], effects, bg);
+	if (r) *r = st;
+	return TJS_S_OK;
+}
+
+// renderLayer(layer, no, effects=true)
+static tjs_error RenderLayer(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	bool effects = numparams > 2 && params[2]->Type() != tvtVoid ? ((tjs_int)*params[2] != 0) : true;
+	bool ok = instance->renderLayer(*params[0], (tjs_int)*params[1], effects);
+	if (r) *r = ok;
+	return TJS_S_OK;
+}
+
+// getShapeMask(layer, no, part="both")
+static tjs_error GetShapeMask(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	ttstr part = numparams > 2 && params[2]->Type() != tvtVoid ? ttstr(*params[2]) : ttstr(TJS_W("both"));
+	tTJSVariant d = instance->getShapeMask(*params[0], (tjs_int)*params[1], part);
+	if (r) *r = d;
+	return TJS_S_OK;
+}
+
+// PSD.flattenPath(path, tolerance=0.1) (static)
+static tjs_error TJS_INTF_METHOD PsdFlattenPath(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *) {
+	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
+	double tol = numparams > 1 && params[1]->Type() != tvtVoid ? (tjs_real)*params[1] : 0.1;
+	tTJSVariant v = PSD::flattenPath(*params[0], tol);
+	if (r) *r = v;
+	return TJS_S_OK;
+}
+
+// PSD.rasterizePath(layer, path, width, height, left=0, top=0) (static)
+static tjs_error TJS_INTF_METHOD PsdRasterizePath(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *) {
+	if (numparams < 4) return TJS_E_BADPARAMCOUNT;
+	double left = numparams > 4 ? (tjs_real)*params[4] : 0.0;
+	double top  = numparams > 5 ? (tjs_real)*params[5] : 0.0;
+	PSD::rasterizePath(*params[0], *params[1], (tjs_int)*params[2], (tjs_int)*params[3], left, top);
+	if (r) r->Clear();
+	return TJS_S_OK;
+}
+
+// PSD.strokePath(layer, path, width, height, style=void) (static)
+static tjs_error TJS_INTF_METHOD PsdStrokePath(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, iTJSDispatch2 *) {
+	if (numparams < 4) return TJS_E_BADPARAMCOUNT;
+	tTJSVariant style = numparams > 4 ? *params[4] : tTJSVariant();
+	PSD::strokePath(*params[0], *params[1], (tjs_int)*params[2], (tjs_int)*params[3], style);
+	if (r) r->Clear();
+	return TJS_S_OK;
+}
+
 // createBlank(width, height, mode=color_mode_rgb) の省略引数用 RawCallback。
 static tjs_error CreateBlank(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
 	if (!instance) return TJS_E_NATIVECLASSCRASH;
@@ -1716,5 +1777,16 @@ NCB_REGISTER_CLASS(PSD) {
 	NCB_METHOD(moveTextLayer);
 	NCB_METHOD(getLayerTextBounds);
 	NCB_METHOD(setLayerTextBounds);
+
+	// --- 描画系 (psdclass_render.cpp) ---
+	RawCallback("getComposite", &GetComposite, 0);
+	RawCallback("renderLayer", &RenderLayer, 0);
+	NCB_METHOD(getVectorMask);
+	NCB_METHOD(getPaths);
+	NCB_METHOD(getLayerShape);
+	RawCallback("getShapeMask", &GetShapeMask, 0);
+	RawCallback("flattenPath", &PsdFlattenPath, TJS_STATICMEMBER);
+	RawCallback("rasterizePath", &PsdRasterizePath, TJS_STATICMEMBER);
+	RawCallback("strokePath", &PsdStrokePath, TJS_STATICMEMBER);
 };
 

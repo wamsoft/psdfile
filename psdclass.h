@@ -404,6 +404,38 @@ public:
 	/** 流し込み枠を差し替える (変換のローカル座標)。 */
 	void setLayerTextBounds(int index, double left, double top, double right, double bottom);
 
+	// ------------------------------------------------------------
+	// 描画系 (psdclass_render.cpp)
+	//
+	// psdparse の compositeImage / renderLayer / shapeMask と psdfx のパス
+	// ラスタライズ。合成は Photoshop の保存済み合成画像 (getBlend) ではなく
+	// いまのレイヤの状態から作る。
+	// ------------------------------------------------------------
+
+	/** レイヤから文書を合成して layer に入れる (文書サイズ、ストレートアルファ)。
+	 *  background は 0xRRGGBB (void なら透明)。戻り値は再現できなかったものの数
+	 *  %[ skipped_adjustments, unsupported_clip_base, unsupported_effects ]。 */
+	tTJSVariant getComposite(tTJSVariant layer, bool effects, tTJSVariant background);
+	/** レイヤ 1 枚を効果込みで透明な面へ描いて layer に入れる。left/top は文書上の
+	 *  位置 (効果のはみ出しを含む矩形)。描けないレイヤ (グループ等) は false。 */
+	bool renderLayer(tTJSVariant layer, int no, bool effects);
+	/** ベクタマスク %[ key, inverted, not_linked, disabled, path ]。無ければ void。 */
+	tTJSVariant getVectorMask(int no);
+	/** 保存パスと作業パスの配列 %[ id, kind, name, unicode_name, path ]。 */
+	tTJSVariant getPaths();
+	/** シェイプ情報 %[ fill_enabled, stroke_enabled, fill, stroke, origins, path ]。無ければ void。 */
+	tTJSVariant getLayerShape(int no);
+	/** シェイプのパスの被覆率 (B=G=R=値, A=255) を layer に入れる。part は
+	 *  "fill" / "stroke" / "both"。%[ left, top, width, height ] か void。 */
+	tTJSVariant getShapeMask(tTJSVariant layer, int no, ttstr part);
+	/** 任意のパスを折れ線へ。[ %[ closed, operation, points:[[x,y],...] ], ... ] */
+	static tTJSVariant flattenPath(tTJSVariant path, double tolerance);
+	/** 任意のパスの塗りの被覆率を layer (width x height) へ。 */
+	static void rasterizePath(tTJSVariant layer, tTJSVariant path, int width, int height, double left, double top);
+	/** 任意のパスの線の被覆率を layer (width x height) へ。style は
+	 *  %[ left, top, line_width, alignment, cap, join, miter_limit, dashes, dash_offset ]。 */
+	static void strokePath(tTJSVariant layer, tTJSVariant path, int width, int height, tTJSVariant style);
+
 protected:
 	iTJSDispatch2 *objthis; ///< 自己オブジェクト情報の参照
 	ttstr dname; ///< 登録用ベース名

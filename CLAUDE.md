@@ -189,6 +189,25 @@ psdparse C++ ライブラリの設計詳細 (IteratorBase / MemoryReader / Vecto
 StreamReader / WriterBase / MemoryWriter / round-trip save / EngineData パース・
 再直列化・編集の仕組み) は [external/psdparse/docs/ARCHITECTURE.md](external/psdparse/docs/ARCHITECTURE.md) と [docs/PYTHON_API.md](external/psdparse/docs/PYTHON_API.md) を参照。
 
+### 描画系 (`psdclass_render.cpp`)
+
+psdparse の `compositeImage` / `renderLayer` / `shapeMask` と、描画ライブラリ psdfx
+(`psdfx.h` の C API) のパスのラスタライズを出す層。`getComposite` / `renderLayer`
+(レイヤからの合成・効果込みの 1 枚描画)、`getVectorMask` / `getPaths` /
+`getLayerShape` (パスとシェイプ情報)、`getShapeMask` と static の `flattenPath` /
+`rasterizePath` / `strokePath`。Python の `composite()` / `render_layer()` /
+`layer.vector_mask` / `paths` / `layer.shape` / `shape_mask()` / `flatten_path()` /
+`rasterize_path()` / `stroke_path()` と同じ内容。
+
+- 画像はストレートアルファの BGRA をそのまま行コピーし、格納先レイヤの type を
+  `ltAlpha` にする。被覆率 (1 byte/px) は `getLayerDataMask` と同じ B=G=R=値, A=255。
+- 返す配列は `tTJSVariant(dispatch, dispatch)` (自分をコンテキストにした variant) で
+  作る。コンテキストが null の配列は TJS で添字アクセスすると「実行コンテキストが
+  違います」になる。
+- static の RawCallback は Win32 GDI の `FlattenPath` / `StrokePath` と名前がぶつかる
+  ので `Psd` 接頭辞を付けている。
+- ディスクリプタの辞書化は `psdclass_meta.cpp` の `psdDescriptorToTjs` を共有する。
+
 ## 行儀よく避ける改変
 
 - `manual.tjs` を更新せずに `NCB_REGISTER_CLASS(PSD)` の登録だけ変更しない (manual.tjs が user-facing 正本)。

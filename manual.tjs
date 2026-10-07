@@ -863,4 +863,122 @@ class PSD {
 	 * ストレージとして保持されてるキャッシュをクリアする
 	 */
 	function clearStorageCache();
+
+	// ------------------------------------------------------------------
+	// 描画系
+	//
+	// getBlend が PSD に保存された合成画像を読むのに対し、こちらはいまの
+	// レイヤの状態から psdparse が描き直す (描画モード / グループ / クリッピング /
+	// マスク / 塗りつぶし・シェイプ / レイヤー効果)。調整レイヤは未対応
+	// (飛ばして数を返す)。結果はストレートアルファで、格納先レイヤの type は
+	// ltAlpha になる。
+	// ------------------------------------------------------------------
+
+	/**
+	 * レイヤから文書を合成する。
+	 * @param layer      格納先レイヤ (文書サイズになる)
+	 * @param effects    レイヤー効果を描くか (省略時 true)
+	 * @param background 不透明な背景色 0xRRGGBB (省略 / void なら透明)
+	 * @return 再現できなかったものの数
+	 *         %[ skipped_adjustments, unsupported_clip_base, unsupported_effects ]
+	 */
+	function getComposite(layer, effects=true, background=void);
+
+	/**
+	 * レイヤ 1 枚を効果込みで透明な面へ描く (下のレイヤとは重ねない)。
+	 * マスク・塗りつぶしやシェイプの中身・不透明度・効果を反映する。
+	 * 格納先レイヤの left/top は文書上の位置で、矩形は効果のはみ出し
+	 * (影・光彩・境界線) を含む。
+	 * @param layer   格納先レイヤ
+	 * @param no      レイヤ番号
+	 * @param effects レイヤー効果を描くか (省略時 true)
+	 * @return 描いたら true。グループ / 区切り / 調整レイヤ / 空のレイヤは false
+	 */
+	function renderLayer(layer, no, effects=true);
+
+	/**
+	 * ベクタマスク (シェイプレイヤは 'vsms')。座標は文書ピクセル。
+	 * @param no レイヤ番号
+	 * @return %[ key, inverted, not_linked, disabled, path ]。無ければ void
+	 *         path = %[ subpaths:[ %[ closed, operation, index,
+	 *                   knots:[ %[ anchor:[x,y], preceding:[x,y], leaving:[x,y], linked ], ... ] ], ... ],
+	 *                   initial_fill, clipboard ]
+	 *         operation はサブパスの合成方法 (-1 直前とひとまとまり / 0 中マド /
+	 *         1 結合 / 2 前面の型抜き / 3 交差)。preceding は前の区間の制御点、
+	 *         leaving は次の区間の制御点。
+	 */
+	function getVectorMask(no);
+
+	/**
+	 * 保存パス (リソース 2000〜2997) と作業パス (1025)。
+	 * @return [ %[ id, kind:"saved"|"work", name:<octet>, unicode_name, path ], ... ]
+	 *         path は getVectorMask と同じ形
+	 */
+	function getPaths();
+
+	/**
+	 * シェイプレイヤの情報 ('vscg' 塗り / 'vstk' 線 / 'vogk' ライブシェイプ)。
+	 * @param no レイヤ番号
+	 * @return %[ fill_enabled, stroke_enabled,
+	 *            fill:%[ kind:"solid"|"gradient"|"pattern", descriptor ],
+	 *            stroke:%[ width (px), alignment:"inside"|"center"|"outside",
+	 *                      cap:"butt"|"round"|"square", join:"miter"|"round"|"bevel",
+	 *                      miter_limit, dashes:[px...], dash_offset (px), opacity (0..1),
+	 *                      blend_mode, content_kind, content ],
+	 *            origins:[ %[ type:"rectangle"|"rounded_rectangle"|"line"|"ellipse",
+	 *                         type_id, index, box:[l,t,r,b], radii:[左上,右上,右下,左下],
+	 *                         line:[x0,y0,x1,y1], line_weight, invalidated ], ... ],
+	 *            path ]
+	 *         どれも無ければ void。pt 指定の線幅は文書の解像度で px に換算済み
+	 */
+	function getLayerShape(no);
+
+	/**
+	 * シェイプ / ベクタマスクのパスをラスタライズする (アンチエイリアス付き)。
+	 * 格納先レイヤには被覆率を B=G=R=値, A=255 で入れる (getLayerDataMask と同じ形)。
+	 * マスクの濃度・ぼかしは掛けない。
+	 * @param layer 格納先レイヤ (left/top は文書上の位置。文書の外にはみ出しうる)
+	 * @param no    レイヤ番号
+	 * @param part  "fill" (パスの内側) / "stroke" (シェイプの線) / "both" (省略時)
+	 * @return %[ left, top, width, height ]。ベクタマスクが無い (stroke なら線が無い) と void
+	 */
+	function getShapeMask(layer, no, part="both");
+
+	/**
+	 * static method
+	 * パスを折れ線にする。
+	 * @param path      getVectorMask の path と同じ形の辞書、またはサブパスの配列。
+	 *                  knot は [x, y] だけでもよい (直線の頂点)。closed の省略は true、
+	 *                  operation の省略は -1
+	 * @param tolerance 曲線からのずれの上限 (px、省略時 0.1)
+	 * @return [ %[ closed, operation, points:[ [x,y], ... ] ], ... ]
+	 */
+	function flattenPath(path, tolerance=0.1);
+
+	/**
+	 * static method
+	 * パスの塗りをラスタライズする (被覆率を B=G=R=値, A=255 で)。
+	 * @param layer  格納先レイヤ (width x height になる)
+	 * @param path   flattenPath と同じ
+	 * @param width  幅
+	 * @param height 高さ
+	 * @param left   格納先の左上に当たるパス座標 (省略時 0)
+	 * @param top    同上 (省略時 0)
+	 */
+	function rasterizePath(layer, path, width, height, left=0, top=0);
+
+	/**
+	 * static method
+	 * パスの線をラスタライズする (被覆率を B=G=R=値, A=255 で)。
+	 * @param layer  格納先レイヤ (width x height になる)
+	 * @param path   flattenPath と同じ
+	 * @param width  幅
+	 * @param height 高さ
+	 * @param style  %[ left, top, line_width (省略時 1), alignment:"center"|"inside"|"outside",
+	 *                  cap:"butt"|"round"|"square", join:"miter"|"round"|"bevel",
+	 *                  miter_limit (線幅に対する比、省略時 4), dashes:[線,間隔,...] (px),
+	 *                  dash_offset (px) ]
+	 *               inside / outside は閉じたサブパスの片側にだけ線幅ぶん描く
+	 */
+	function strokePath(layer, path, width, height, style=void);
 };
