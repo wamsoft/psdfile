@@ -40,7 +40,11 @@ static const unsigned char lic_00[] = {
 
 void RegisterPsdfileLicenses()
 {
-	TVPRegisterLicense(TJS_W("psdparse"), TJS_W("plugin:psdfile"), lic_00, 632, 1064);
+	try {
+		TVPRegisterLicense(TJS_W("psdparse"), TJS_W("plugin:psdfile"), lic_00, 632, 1064);
+	} catch (...) {
+		/* 本体が License API を持たない (古い本体) ときは登録しない */
+	}
 }
 
 #else /* !TVP_HAS_LICENSE_API */
