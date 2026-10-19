@@ -413,12 +413,22 @@ public:
 	// ------------------------------------------------------------
 
 	/** レイヤから文書を合成して layer に入れる (文書サイズ、ストレートアルファ)。
-	 *  background は 0xRRGGBB (void なら透明)。戻り値は再現できなかったものの数
-	 *  %[ skipped_adjustments, unsupported_clip_base, unsupported_effects ]。 */
-	tTJSVariant getComposite(tTJSVariant layer, bool effects, tTJSVariant background);
-	/** レイヤ 1 枚を効果込みで透明な面へ描いて layer に入れる。left/top は文書上の
-	 *  位置 (効果のはみ出しを含む矩形)。描けないレイヤ (グループ等) は false。 */
-	bool renderLayer(tTJSVariant layer, int no, bool effects);
+	 *  background は 0xRRGGBB (void なら透明)。opt は合成の指定 (readCompositeOptions)。
+	 *  戻り値は再現できなかったものの数などの辞書 (statsToTjs)。 */
+	tTJSVariant getComposite(tTJSVariant layer, const psd::CompositeOptions &opt);
+	/** レイヤ 1 枚 (フォルダなら中身を合成した 1 枚) を効果込みで透明な面へ描いて
+	 *  layer に入れる。left/top は文書上の位置。描けない / 空なら false。 */
+	bool renderLayer(tTJSVariant layer, int no, const psd::CompositeOptions &opt);
+	/** 文書上の点で、いちばん上に見えている画素レイヤの番号 (無ければ -1)。 */
+	int layerAtPoint(int x, int y, const psd::CompositeOptions &opt, int minAlpha);
+	/** 合成の指定を読む。v が辞書なら %[ effects, background, draft, cache, visible,
+	 *  no_effects ]、それ以外は effects の真偽 (void なら既定)。background が void で
+	 *  なければ背景色 0xRRGGBB として使う (旧来の引数の並び用)。 */
+	void readCompositeOptions(tTJSVariant v, tTJSVariant background, psd::CompositeOptions &opt);
+	/** 合成のキャッシュ (getComposite などに cache:true を渡したときに使う) */
+	void clearCompositeCache() { compositeCache_.clear(); }
+	void setCompositeCacheLimit(tjs_int64 bytes) { compositeCache_.setLimit(bytes); }
+	tTJSVariant getCompositeCacheInfo();
 	/** ベクタマスク %[ key, inverted, not_linked, disabled, path ]。無ければ void。 */
 	tTJSVariant getVectorMask(int no);
 	/** 保存パスと作業パスの配列 %[ id, kind, name, unicode_name, path ]。 */
@@ -439,6 +449,8 @@ public:
 protected:
 	iTJSDispatch2 *objthis; ///< 自己オブジェクト情報の参照
 	ttstr dname; ///< 登録用ベース名
+	/// 合成の途中結果 (フォルダの中身・途中まで描いた画像)。読み込み・編集で捨てる
+	psd::CompositeCache compositeCache_;
 
 	/**
 	 * iTJSBinaryStream をストリームとしてロードする。

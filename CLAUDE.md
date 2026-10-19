@@ -199,6 +199,17 @@ psdparse の `compositeImage` / `renderLayer` / `shapeMask` と、描画ライ�
 `layer.vector_mask` / `paths` / `layer.shape` / `shape_mask()` / `flatten_path()` /
 `rasterize_path()` / `stroke_path()` と同じ内容。
 
+- 合成の指定 (`getComposite` の 2 番目 / `renderLayer` の 3 番目 / `layerAt` の 3 番目に辞書)
+  は `PSD::readCompositeOptions` で `psd::CompositeOptions` に読む。表示の上書き (`visible`)・
+  効果の個別無効 (`no_effects`)・下書き (`draft`)・途中結果の使い回し (`cache`)。
+  `layerAt` は psdparse の `layerAtPoint`。
+- `cache:true` のときは PSD オブジェクトが持つ `compositeCache_` を渡す。読み込み
+  (`clearData`) と編集後の `invalidateStorageCache()` で捨てる。編集系 API が
+  `invalidateStorageCache()` を呼ばなくても、psdparse 側がレイヤの状態を照らすので
+  古い結果は使われないが、新しく編集系 API を足すときは呼ぶこと。
+- Python バインディング (`composite()` など) にはまだ合成の指定の拡張を出していない
+  (psdparse 側の C++ API だけ)。
+
 - 画像はストレートアルファの BGRA をそのまま行コピーし、格納先レイヤの type を
   `ltAlpha` にする。被覆率 (1 byte/px) は `getLayerDataMask` と同じ B=G=R=値, A=255。
 - 返す配列は `tTJSVariant(dispatch, dispatch)` (自分をコンテキストにした variant) で

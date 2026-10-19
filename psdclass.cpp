@@ -222,6 +222,7 @@ PSD::clearData()
 	layerIdIdxMap.clear();
 	pathMap.clear();
 	storageStarted = false;
+	compositeCache_.clear();
 	// PSDFile::clearData が channelImageData / imageData 等の iterator を
 	// 破棄 → shared_ptr<Source> の refcount が落ちて Source が消える →
 	// iTJSBinaryStream も自動解放される。
@@ -1087,6 +1088,8 @@ PSD::invalidateStorageCache()
 	layerIdIdxMap.clear();
 	pathMap.clear();
 	storageStarted = false;
+	// 合成の途中結果も捨てる (中身が変わった)
+	compositeCache_.clear();
 }
 
 bool
@@ -1544,23 +1547,47 @@ static tjs_error MoveLayerSibling(tTJSVariant *r, tjs_int numparams, tTJSVariant
 // --- 描画系 (psdclass_render.cpp) の省略引数用 RawCallback ---
 
 // getComposite(layer, effects=true, background=void)
+// getComposite(layer, %[ effects, background, draft, cache, visible, no_effects ])
 static tjs_error GetComposite(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
 	if (!instance) return TJS_E_NATIVECLASSCRASH;
 	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
-	bool effects = numparams > 1 && params[1]->Type() != tvtVoid ? ((tjs_int)*params[1] != 0) : true;
-	tTJSVariant bg = numparams > 2 ? *params[2] : tTJSVariant();
-	tTJSVariant st = instance->getComposite(*params[0], effects, bg);
+	psd::CompositeOptions opt;
+	instance->readCompositeOptions(numparams > 1 ? *params[1] : tTJSVariant(),
+	                               numparams > 2 ? *params[2] : tTJSVariant(), opt);
+	tTJSVariant st = instance->getComposite(*params[0], opt);
 	if (r) *r = st;
 	return TJS_S_OK;
 }
 
-// renderLayer(layer, no, effects=true)
+// renderLayer(layer, no, effects=true) / renderLayer(layer, no, options)
 static tjs_error RenderLayer(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
 	if (!instance) return TJS_E_NATIVECLASSCRASH;
 	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
-	bool effects = numparams > 2 && params[2]->Type() != tvtVoid ? ((tjs_int)*params[2] != 0) : true;
-	bool ok = instance->renderLayer(*params[0], (tjs_int)*params[1], effects);
+	psd::CompositeOptions opt;
+	instance->readCompositeOptions(numparams > 2 ? *params[2] : tTJSVariant(), tTJSVariant(), opt);
+	bool ok = instance->renderLayer(*params[0], (tjs_int)*params[1], opt);
 	if (r) *r = ok;
+	return TJS_S_OK;
+}
+
+// layerAt(x, y, options=void, minAlpha=1)
+static tjs_error LayerAt(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 2) return TJS_E_BADPARAMCOUNT;
+	psd::CompositeOptions opt;
+	instance->readCompositeOptions(numparams > 2 ? *params[2] : tTJSVariant(), tTJSVariant(), opt);
+	int minAlpha = numparams > 3 && params[3]->Type() != tvtVoid ? (tjs_int)*params[3] : 1;
+	tjs_int no = instance->layerAtPoint((tjs_int)*params[0], (tjs_int)*params[1], opt, minAlpha);
+	if (r) *r = no;
+	return TJS_S_OK;
+}
+
+// setCompositeCacheLimit(bytes)
+static tjs_error SetCompositeCacheLimit(tTJSVariant *r, tjs_int numparams, tTJSVariant **params, PSD *instance) {
+	if (!instance) return TJS_E_NATIVECLASSCRASH;
+	if (numparams < 1) return TJS_E_BADPARAMCOUNT;
+	instance->setCompositeCacheLimit((tjs_int64)*params[0]);
+	if (r) r->Clear();
 	return TJS_S_OK;
 }
 
@@ -1794,6 +1821,10 @@ NCB_REGISTER_CLASS(PSD) {
 	// --- 描画系 (psdclass_render.cpp) ---
 	RawCallback("getComposite", &GetComposite, 0);
 	RawCallback("renderLayer", &RenderLayer, 0);
+	RawCallback("layerAt", &LayerAt, 0);
+	NCB_METHOD(clearCompositeCache);
+	RawCallback("setCompositeCacheLimit", &SetCompositeCacheLimit, 0);
+	NCB_METHOD(getCompositeCacheInfo);
 	NCB_METHOD(getVectorMask);
 	NCB_METHOD(getPaths);
 	NCB_METHOD(getLayerShape);

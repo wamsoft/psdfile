@@ -89,6 +89,10 @@ tTJSVariant statsToTjs(const psd::CompositeStats &st)
 		d.SetValue(TJS_W("skipped_adjustments"),   st.skippedAdjustments);
 		d.SetValue(TJS_W("unsupported_clip_base"), st.unsupportedClipBase);
 		d.SetValue(TJS_W("unsupported_effects"),   st.unsupportedEffects);
+		d.SetValue(TJS_W("draft_skipped"),         st.draftSkipped);
+		d.SetValue(TJS_W("cache_hits"),            st.cacheHits);
+		d.SetValue(TJS_W("cache_misses"),          st.cacheMisses);
+		d.SetValue(TJS_W("reused_top_level"),      st.reusedTopLevel);
 		result = d;
 	}
 	return result;
@@ -277,20 +281,58 @@ void checkRaster(int w, int h)
 // 合成 / 描画
 // ============================================================================
 
+// 背景色 0xRRGGBB (void なら透明)
+static void readBackground(tTJSVariant background, psd::CompositeOptions &opt)
+{
+	if (background.Type() == tvtVoid) { opt.background = false; return; }
+	const tjs_int c = (tjs_int)background;
+	opt.background = true;
+	opt.backgroundColor[0] = (uint8_t)((c >> 16) & 0xff);
+	opt.backgroundColor[1] = (uint8_t)((c >> 8) & 0xff);
+	opt.backgroundColor[2] = (uint8_t)(c & 0xff);
+}
+
+void
+PSD::readCompositeOptions(tTJSVariant v, tTJSVariant background, psd::CompositeOptions &opt)
+{
+	if (background.Type() != tvtVoid) readBackground(background, opt);
+	if (v.Type() == tvtVoid) return;
+	const bool dict = v.Type() == tvtObject && v.AsObjectNoAddRef() &&
+		v.AsObjectNoAddRef()->IsInstanceOf(0, 0, 0, TJS_W("Dictionary"), NULL) == TJS_S_TRUE;
+	if (!dict) { opt.effects = (tjs_int)v != 0; return; }
+	if (hasMember(v, TJS_W("effects"))) opt.effects = (tjs_int)member(v, TJS_W("effects")) != 0;
+	if (hasMember(v, TJS_W("draft"))) opt.draft = (tjs_int)member(v, TJS_W("draft")) != 0;
+	if (hasMember(v, TJS_W("background"))) readBackground(member(v, TJS_W("background")), opt);
+	if (hasMember(v, TJS_W("cache")) && (tjs_int)member(v, TJS_W("cache")) != 0) opt.cache = &compositeCache_;
+	// visible: レイヤ番号を添字にした配列 (true / false、void は文書のまま)
+	if (hasMember(v, TJS_W("visible"))) {
+		tTJSVariant a = member(v, TJS_W("visible"));
+		if (!isArray(a)) TVPThrowExceptionMessage(TJS_W("visible must be an array indexed by layer number"));
+		const tjs_int n = std::min<tjs_int>(arrayCount(a), (tjs_int)layerList.size());
+		opt.visibility.assign((size_t)n, -1);
+		for (tjs_int i = 0; i < n; i++) {
+			tTJSVariant e = arrayAt(a, i);
+			if (e.Type() != tvtVoid) opt.visibility[(size_t)i] = (tjs_int)e != 0 ? 1 : 0;
+		}
+	}
+	// no_effects: 効果を描かないレイヤ番号の配列
+	if (hasMember(v, TJS_W("no_effects"))) {
+		tTJSVariant a = member(v, TJS_W("no_effects"));
+		if (!isArray(a)) TVPThrowExceptionMessage(TJS_W("no_effects must be an array of layer numbers"));
+		opt.noEffects.assign(layerList.size(), 0);
+		const tjs_int n = arrayCount(a);
+		for (tjs_int i = 0; i < n; i++) {
+			const tjs_int no = (tjs_int)arrayAt(a, i);
+			if (no >= 0 && no < (tjs_int)layerList.size()) opt.noEffects[(size_t)no] = 1;
+		}
+	}
+}
+
 tTJSVariant
-PSD::getComposite(tTJSVariant layer, bool effects, tTJSVariant background)
+PSD::getComposite(tTJSVariant layer, const psd::CompositeOptions &opt)
 {
 	checkLayerObject(layer);
 	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
-	psd::CompositeOptions opt;
-	opt.effects = effects;
-	if (background.Type() != tvtVoid) {
-		const tjs_int c = (tjs_int)background;   // 0xRRGGBB
-		opt.background = true;
-		opt.backgroundColor[0] = (uint8_t)((c >> 16) & 0xff);
-		opt.backgroundColor[1] = (uint8_t)((c >> 8) & 0xff);
-		opt.backgroundColor[2] = (uint8_t)(c & 0xff);
-	}
 	std::vector<uint8_t> out;
 	psd::CompositeStats st;
 	if (!compositeImage(out, opt, &st))
@@ -299,13 +341,32 @@ PSD::getComposite(tTJSVariant layer, bool effects, tTJSVariant background)
 	return statsToTjs(st);
 }
 
+int
+PSD::layerAtPoint(int x, int y, const psd::CompositeOptions &opt, int minAlpha)
+{
+	if (!isLoaded) TVPThrowExceptionMessage(TJS_W("no data"));
+	return psd::PSDFile::layerAtPoint(x, y, opt, minAlpha);
+}
+
+tTJSVariant
+PSD::getCompositeCacheInfo()
+{
+	tTJSVariant result;
+	ncbDictionaryAccessor d;
+	if (d.IsValid()) {
+		d.SetValue(TJS_W("bytes"),   (tjs_int64)compositeCache_.bytes());
+		d.SetValue(TJS_W("limit"),   (tjs_int64)compositeCache_.limit());
+		d.SetValue(TJS_W("entries"), (tjs_int)compositeCache_.entries());
+		result = d;
+	}
+	return result;
+}
+
 bool
-PSD::renderLayer(tTJSVariant layer, int no, bool effects)
+PSD::renderLayer(tTJSVariant layer, int no, const psd::CompositeOptions &opt)
 {
 	checkLayerObject(layer);
 	psd::LayerInfo &lay = layerAt(this, no);
-	psd::CompositeOptions opt;
-	opt.effects = effects;
 	std::vector<uint8_t> out;
 	int left = 0, top = 0, w = 0, h = 0;
 	if (!psd::PSDFile::renderLayer(no, out, left, top, w, h, opt)) return false;
