@@ -294,17 +294,17 @@ class PSD {
 
 	/**
 	 * レイヤーカンプデータの読み出し
-	 * @return ガイド情報辞書 %[ last_applied_id,  // Photoshp上で最後に適用状態だったid
-	 *                           comps:[id,                // カンプID
-	 *                                  record_visibility, // 表示/非表示を記録しているか
-	 *                                  record_position,   // 位置を記録しているか
-	 *                                  record_appearance, // 外観(レイヤーエフェクト)を記録しているか
-	 *                                  name,              // カンプ名
-	 *                                  comment,           // コメント
-	 *                                  ],... ]
+	 * @return カンプ情報辞書 %[ last_applied_id,  // Photoshop上で最後に適用状態だったカンプID
+	 *                           comps:[ %[ id,                // カンプID
+	 *                                      record_visibility, // 表示/非表示を記録しているか
+	 *                                      record_position,   // 位置を記録しているか
+	 *                                      record_appearance, // 外観(レイヤーエフェクト)を記録しているか
+	 *                                      name,              // カンプ名
+	 *                                      comment,           // コメント
+	 *                                    ],... ] ]
 	 *         カンプ情報がない場合は void を返す
 	 *
-	 *   ・record_xxx フラグが立っていな場合は最後に適用したカンプ(last_applied_id ではなく
+	 *   ・record_xxx フラグが立っていない場合は最後に適用したカンプ(last_applied_id ではなく
 	 *     プログラムで最後に適用したカンプ)の状態を引き継ぎます
 	 *   ・カンプIDに対応した各レイヤーごとの表示状態情報は、レイヤー情報の layer_comp
 	 *     プロパティにカンプIDをキーとした辞書に格納してあります。
@@ -343,8 +343,9 @@ class PSD {
 	function getLayerMask(no);
 
 	/**
-	 * レイヤのブレンド範囲を取得する。source/dest は 32bit の生値で、
-	 * 上下 16bit に黒側/白側の範囲が詰まっている(詳細は PSD 仕様書を参照)。
+	 * レイヤのブレンド範囲を取得する。
+	 *
+	 * source/dest は 32bit の生値で、上下 16bit に黒側/白側の範囲が詰まっている(詳細は PSD 仕様書を参照)。
 	 * @param no レイヤ番号
 	 * @return %[ gray:     %[ source:, dest: ],
 	 *            channels: [ %[ source:, dest: ],... ]
@@ -413,8 +414,7 @@ class PSD {
 	function getLayerEffects(no);
 
 	/**
-	 * 塗りつぶしレイヤの内容('SoCo'単色/'GdFl'グラデーション/'PtFl'パターン)を
-	 * 取得する
+	 * 塗りつぶしレイヤの内容('SoCo'単色/'GdFl'グラデーション/'PtFl'パターン)を取得する
 	 * @param no レイヤ番号
 	 * @return %[ type: // "solid" / "gradient" / "pattern"
 	 *            data: // ディスクリプタ辞書
@@ -553,7 +553,8 @@ class PSD {
 
 	/**
 	 * レイヤ一覧上の [from, from+count) の範囲をまとめて to の位置へ動かす
-	 * (低水準。フォルダごと動かすなら groupSpan の戻り値を渡す)。
+	 *
+	 * 低水準の操作。フォルダごと動かすなら groupSpan の戻り値を渡す。
 	 * @param from  移動元先頭レイヤ番号
 	 * @param count 移動する枚数
 	 * @param to    移動先(「取り除く前」のレイヤ一覧でのインデックス)
@@ -648,7 +649,8 @@ class PSD {
 
 	/**
 	 * 任意の追加レイヤ情報キーに対する setLayerEffects の一般版
-	 * (塗りつぶしレイヤの 'SoCo'/'GdFl'/'PtFl' 等)。
+	 *
+	 * 塗りつぶしレイヤの 'SoCo'/'GdFl'/'PtFl' 等に使う。
 	 * 該当キーを持たないレイヤの場合は例外。
 	 * @param index   レイヤ番号
 	 * @param key     4文字のキー
@@ -701,8 +703,9 @@ class PSD {
 	function setLayerPixels(index, layer);
 
 	/**
-	 * レイヤのマスク画素を Layer オブジェクトの内容(B 成分をグレーとして使用)で
-	 * 差し替える。マスク矩形も (top,left,imageWidth,imageHeight) に設定する。
+	 * レイヤのマスク画素を Layer オブジェクトの内容(B 成分をグレーとして使用)で差し替える。
+	 *
+	 * マスク矩形も (top,left,imageWidth,imageHeight) に設定する。
 	 * マスクが無ければ新規作成する。8bit 文書のみ。
 	 * @param index レイヤ番号
 	 * @param layer マスク供給元 Layer
@@ -744,8 +747,9 @@ class PSD {
 	function setLayerText(index, text);
 
 	/**
-	 * テキストレイヤの runIndex 番目のラン(getLayerInfo().text.runs に対応)の
-	 * スタイルを編集する。style 辞書のうち指定されたキーだけ上書きする。
+	 * テキストレイヤの runIndex 番目のラン(getLayerInfo().text.runs に対応)のスタイルを編集する。
+	 *
+	 * style 辞書のうち指定されたキーだけ上書きする。
 	 *   %[ font:      // フォント名。文書のフォントセットに無ければ追加される
 	 *                 // (getLayerFonts() が返す PostScript 風の名前。表示名では
 	 *                 //  ないことに注意。手元に無い名前は Photoshop 側で代替される)
@@ -827,9 +831,10 @@ class PSD {
 	function setLayerTextTransform(index, matrix);
 
 	/**
-	 * テキストレイヤを平行移動する。アフィン変換の tx/ty とレイヤ矩形
-	 * (マスク矩形があればそれも)を同じだけずらすので、PSD 内蔵のラスタも
-	 * 一緒に動く。テキストレイヤ以外の場合は例外。
+	 * テキストレイヤを平行移動する。
+	 *
+	 * アフィン変換の tx/ty とレイヤ矩形(マスク矩形があればそれも)を同じだけずらすので、
+	 * PSD 内蔵のラスタも一緒に動く。テキストレイヤ以外の場合は例外。
 	 * @param index レイヤ番号
 	 * @param dx    X 移動量(px)
 	 * @param dy    Y 移動量(px)
@@ -859,8 +864,9 @@ class PSD {
 	function setLayerTextBounds(index, left, top, right, bottom);
 
 	/**
-	 * static method
 	 * ストレージとして保持されてるキャッシュをクリアする
+	 *
+	 * static メソッド。
 	 */
 	function clearStorageCache();
 
@@ -945,8 +951,9 @@ class PSD {
 	function getShapeMask(layer, no, part="both");
 
 	/**
-	 * static method
 	 * パスを折れ線にする。
+	 *
+	 * static メソッド。
 	 * @param path      getVectorMask の path と同じ形の辞書、またはサブパスの配列。
 	 *                  knot は [x, y] だけでもよい (直線の頂点)。closed の省略は true、
 	 *                  operation の省略は -1
@@ -956,8 +963,9 @@ class PSD {
 	function flattenPath(path, tolerance=0.1);
 
 	/**
-	 * static method
 	 * パスの塗りをラスタライズする (被覆率を B=G=R=値, A=255 で)。
+	 *
+	 * static メソッド。
 	 * @param layer  格納先レイヤ (width x height になる)
 	 * @param path   flattenPath と同じ
 	 * @param width  幅
@@ -968,8 +976,9 @@ class PSD {
 	function rasterizePath(layer, path, width, height, left=0, top=0);
 
 	/**
-	 * static method
 	 * パスの線をラスタライズする (被覆率を B=G=R=値, A=255 で)。
+	 *
+	 * static メソッド。
 	 * @param layer  格納先レイヤ (width x height になる)
 	 * @param path   flattenPath と同じ
 	 * @param width  幅
@@ -983,8 +992,9 @@ class PSD {
 	function strokePath(layer, path, width, height, style=void);
 
 	/**
-	 * static method
 	 * 描画系 (getComposite / renderLayer / ラスタライズ) の並列処理のスレッド数。
+	 *
+	 * static メソッド。
 	 * 大きな画像は行ごとに複数のスレッドへ分けて処理する (結果はスレッド数によらない)。
 	 * 主な描画モードの合成は、AVX2 の CPU なら 8 画素ずつの SIMD 版で処理する。
 	 * @param count 使うスレッド数 (呼び出し元を含む)。0 = 自動 (論理コア数、最大 16)、
