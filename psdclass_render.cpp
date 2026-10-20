@@ -54,6 +54,9 @@ unsigned char *prepareLayer(tTJSVariant &layer, int left, int top, int w, int h,
 	obj.SetValue(TJS_W("imageTop"), 0);
 	obj.SetValue(TJS_W("imageWidth"), w);
 	obj.SetValue(TJS_W("imageHeight"), h);
+	// 画像を大きくしたときは、画像の大きさを変えた後でないとレイヤを広げられない
+	obj.SetValue(TJS_W("width"), w);
+	obj.SetValue(TJS_W("height"), h);
 	obj.SetValue(TJS_W("type"), (tjs_int)ltAlpha);   // ストレートアルファ
 	unsigned char *buffer = (unsigned char*)obj.GetValue(TJS_W("mainImageBufferForWrite"), ncbTypedefs::Tag<tjs_intptr_t>());
 	pitch = obj.GetValue(TJS_W("mainImageBufferPitch"), ncbTypedefs::Tag<tjs_int>());

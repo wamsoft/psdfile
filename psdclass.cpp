@@ -539,6 +539,9 @@ PSD::_getLayerData(tTJSVariant layer, int no, psd::ImageMode imageMode)
 	obj.SetValue(TJS_W("imageTop"),   0);
 	obj.SetValue(TJS_W("imageWidth"),  width);
 	obj.SetValue(TJS_W("imageHeight"), height);
+	// 画像を大きくしたときは、画像の大きさを変えた後でないとレイヤを広げられない
+	obj.SetValue(TJS_W("width"),  width);
+	obj.SetValue(TJS_W("height"), height);
 	obj.SetValue(TJS_W("name"), layname(lay));
 
 	if (imageMode == psd::IMAGE_MODE_MASK)
@@ -700,6 +703,9 @@ PSD::getBlend(tTJSVariant layer) {
 		obj.SetValue(TJS_W("imageTop"),   0);
 		obj.SetValue(TJS_W("imageWidth"),  get_width());
 		obj.SetValue(TJS_W("imageHeight"), get_height());
+		// 画像を大きくしたときは、画像の大きさを変えた後でないとレイヤを広げられない
+		obj.SetValue(TJS_W("width"),  get_width());
+		obj.SetValue(TJS_W("height"), get_height());
 
 		// 画像データのコピー
 		unsigned char *buffer = (unsigned char*)obj.GetValue(TJS_W("mainImageBufferForWrite"), ncbTypedefs::Tag<tjs_intptr_t>());
